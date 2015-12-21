@@ -1,12 +1,10 @@
 import argparse
 import re
 import urlparse
-
 from twisted.internet import reactor
 from twisted.names import dns, server
 from twisted.web.resource import Resource
 from twisted.web.server import Site
-
 from dnswall.backend import *
 from dnswall.handler import *
 from dnswall.resolver import *
@@ -28,9 +26,10 @@ def get_daemon_args():
                         help='address used to serve dns request. default is 0.0.0.0:53.')
     parser.add_argument('-http-addr', dest='http_addr', default='0.0.0.0:9090',
                         help='address used to serve http request. default is 0.0.0.0:9090.')
-    return parser.parse_args(
-        ['-backend', 'etcd://127.0.0.1:4001/?pattern=workplus.io', '-addr', '0.0.0.0:10053']
-    )
+    # return parser.parse_args(
+    #     ['-backend', 'etcd://127.0.0.1:4001/?pattern=workplus.io', '-addr', '0.0.0.0:10053']
+    # )
+    return parser.parse_args()
 
 
 def main():
