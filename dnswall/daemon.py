@@ -1,25 +1,23 @@
 import argparse
 import re
 import urlparse
+
 from twisted.internet import reactor
 from twisted.names import dns, server
 from twisted.web.resource import Resource
 from twisted.web.server import Site
+
 from dnswall.backend import *
 from dnswall.handler import *
 from dnswall.resolver import *
+from dnswall.version import current_version
 
 __ADDRPAIR_LEN = 2
-
-__PROGRAM_NAME = 'dnswall-daemon'
-__PROGRAM_DESC = 'dnswall daemon.'
-__PROGRAM_VERSION = '1.0.0'
-
 __BACKENDS = {"etcd": EtcdBackend}
 
 
 def get_daemon_args():
-    parser = argparse.ArgumentParser(prog=__PROGRAM_NAME, description=__PROGRAM_DESC)
+    parser = argparse.ArgumentParser(prog=current_version.package, description=current_version.desc)
 
     parser.add_argument('-backend', dest='backend', required=True,
                         help='which backend to use.')
@@ -31,7 +29,7 @@ def get_daemon_args():
     parser.add_argument('-http-addr', dest='http_addr', default='0.0.0.0:9090',
                         help='address used to serve http request. default is 0.0.0.0:9090.')
     return parser.parse_args(
-        # ['-backend', 'etcd://127.0.0.1:4001/?pattern=workplus.io', '-addr', '0.0.0.0:10053']
+        ['-backend', 'etcd://127.0.0.1:4001/?pattern=workplus.io', '-addr', '0.0.0.0:10053']
     )
 
 
@@ -71,7 +69,7 @@ def main():
 
     http_resource = Resource()
 
-    version_resource = VersionResource(name=__PROGRAM_NAME, version=__PROGRAM_VERSION)
+    version_resource = VersionResource(name=current_version.package, version=current_version.short())
     http_resource.putChild('', version_resource)
     http_resource.putChild('_version', version_resource)
     http_resource.putChild('names', NameResource(backend=backend))
