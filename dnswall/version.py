@@ -1,5 +1,5 @@
 """
-
+    Versions for Python packages.
 """
 
 __all__ = ['Version', 'current_version', 'as_str']
