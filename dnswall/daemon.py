@@ -1,0 +1,86 @@
+import argparse
+import re
+import urlparse
+from twisted.internet import reactor
+from twisted.names import dns, server
+from twisted.web.resource import Resource
+from twisted.web.server import Site
+from dnswall.backend import *
+from dnswall.handler import *
+from dnswall.resolver import *
+
+__ADDRPAIR_LEN = 2
+
+__PROGRAM_NAME = 'dnswall-daemon'
+__PROGRAM_DESC = 'dnswall daemon.'
+__PROGRAM_VERSION = '1.0.0'
+
+__BACKENDS = {"etcd": EtcdBackend}
+
+
+def get_daemon_args():
+    parser = argparse.ArgumentParser(prog=__PROGRAM_NAME, description=__PROGRAM_DESC)
+
+    parser.add_argument('-backend', dest='backend', required=True,
+                        help='which backend to use.')
+
+    parser.add_argument('-nameservers', dest='nameservers', default='119.29.29.29,114.114.114.114',
+                        help='nameservers used to forward request. default is 119.29.29.29,114.114.114.114')
+    parser.add_argument('-addr', dest='addr', default='0.0.0.0:53',
+                        help='address used to serve dns request. default is 0.0.0.0:53.')
+    parser.add_argument('-http-addr', dest='http_addr', default='0.0.0.0:9090',
+                        help='address used to serve http request. default is 0.0.0.0:9090.')
+    return parser.parse_args(
+        # ['-backend', 'etcd://127.0.0.1:4001/?pattern=workplus.io', '-addr', '0.0.0.0:10053']
+    )
+
+
+def main():
+    daemon_args = get_daemon_args()
+
+    backend_url = daemon_args.backend
+    backend_scheme = urlparse.urlparse(backend_url).scheme
+
+    backend_cls = __BACKENDS.get(backend_scheme)
+    if not backend_cls:
+        raise BackendNotFound("backend[type={}] not found.".format(backend_scheme))
+
+    backend = backend_cls(backend_options=backend_url)
+
+    dns_servers = re.split(r',|\s', daemon_args.nameservers)
+    dns_factory = server.DNSServerFactory(
+        clients=[BackendResolver(backend=backend), ProxyResovler(servers=dns_servers)]
+    )
+
+    dns_addrpair = re.split(r':', daemon_args.addr)
+    if len(dns_addrpair) != __ADDRPAIR_LEN:
+        raise ValueError("addr must like 0.0.0.0:53 format.")
+
+    # listen for serve dns request.
+
+    dns_port, dns_host = (int(dns_addrpair[1]), dns_addrpair[0])
+    reactor.listenUDP(dns_port, dns.DNSDatagramProtocol(controller=dns_factory),
+                      interface=dns_host)
+    reactor.listenTCP(dns_port, dns_factory, interface=dns_host)
+
+    # listen for serve http request.
+
+    http_addrpair = re.split(r':', daemon_args.http_addr)
+    if len(http_addrpair) != __ADDRPAIR_LEN:
+        raise ValueError("http addr must like 0.0.0.0:9090 format.")
+
+    http_resource = Resource()
+
+    version_resource = VersionResource(name=__PROGRAM_NAME, version=__PROGRAM_VERSION)
+    http_resource.putChild('', version_resource)
+    http_resource.putChild('_version', version_resource)
+    http_resource.putChild('names', NameResource(backend=backend))
+
+    http_port, http_host = (int(http_addrpair[1]), http_addrpair[0])
+    reactor.listenTCP(http_port, Site(http_resource), interface=http_host)
+
+    reactor.run()
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())
