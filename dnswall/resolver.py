@@ -56,16 +56,18 @@ class BackendResolver(object):
                 answers = namerecord.specs \
                           | select(lambda spec: spec.host_ipv4 is not None) \
                           | collect(lambda spec: dns.Record_A(address=spec.host_ipv4)) \
-                          | collect(lambda record_a: dns.RRHeader(name=qn, payload=record_a))
+                          | collect(lambda record_a: dns.RRHeader(name=qn, payload=record_a)) \
+                          | as_list
 
-                return list(answers), [], []
+                return answers, [], []
 
             else:
                 answers = namerecord.specs \
                           | select(lambda spec: spec.host_ipv6 is not None) \
                           | collect(lambda spec: dns.Record_AAAA(address=spec.host_ipv6)) \
-                          | collect(lambda record_aaaa: dns.RRHeader(name=qn, payload=record_aaaa))
+                          | collect(lambda record_aaaa: dns.RRHeader(name=qn, payload=record_aaaa)) \
+                          | as_list
 
-                return list(answers), [], []
+                return answers, [], []
 
         return threads.deferToThread(_lookup_backend, self._backend, qname, qtype)
