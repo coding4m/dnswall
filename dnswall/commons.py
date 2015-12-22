@@ -10,9 +10,12 @@ from functools import reduce
 
 __author__ = 'Julien Palard <julien@eeple.fr>'
 __all__ = [
-    'Pipe', 'take', 'tail', 'skip', 'all', 'any', 'avg', 'count',
-    'max', 'min', 'as_dict', 'permutations', 'netcat', 'netwrite',
-    'traverse', 'join', 'replace', 'as_list', 'as_tuple', 'stdout', 'lineout',
+    'Pipe', 'take', 'tail', 'skip',
+    'all', 'any', 'avg', 'count', 'max', 'min', 'permutations',
+    'netcat', 'netwrite',
+    'traverse', 'join', 'split', 'replace',
+    'as_list', 'as_tuple', 'as_dict',
+    'stdout', 'lineout',
     'tee', 'add', 'first', 'chain', 'collect', 'select', 'take_while',
     'skip_while', 'aggregate', 'groupby', 'sort', 'reverse',
     'chain_with', 'islice', 'izip', 'passed', 'index', 'strip',
@@ -175,6 +178,15 @@ def traverse(args):
 @Pipe
 def join(iterable, separator=", "):
     return separator.join(builtins.map(str, iterable))
+
+
+@Pipe
+def split(iterable, pattern=", ", maxsplit=0):
+    if isinstance(iterable, (str,)):
+        return re.split(pattern, iterable, maxsplit=maxsplit)
+    else:
+        as_strs = builtins.map(str, iterable)
+        return builtins.map(lambda astr: re.split(pattern, astr, maxsplit=maxsplit), as_strs)
 
 
 @Pipe
