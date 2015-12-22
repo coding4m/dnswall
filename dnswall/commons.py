@@ -14,7 +14,7 @@ __all__ = [
     'all', 'any', 'avg', 'count', 'max', 'min', 'permutations',
     'netcat', 'netwrite',
     'traverse', 'join', 'split', 'replace',
-    'as_list', 'as_tuple', 'as_dict',
+    'as_int', 'as_str', 'as_list', 'as_tuple', 'as_dict',
     'stdout', 'lineout',
     'tee', 'add', 'first', 'chain', 'collect', 'select', 'take_while',
     'skip_while', 'aggregate', 'groupby', 'sort', 'reverse',
@@ -129,11 +129,6 @@ def min(iterable, **kwargs):
 
 
 @Pipe
-def as_dict(iterable):
-    return dict(iterable)
-
-
-@Pipe
 def permutations(iterable, r=None):
     # permutations('ABCD', 2) --> AB AC AD BA BC BD CA CB CD DA DB DC
     # permutations(range(3)) --> 012 021 102 120 201 210
@@ -195,6 +190,16 @@ def replace(to_replace, pattern=None, replacement=None):
 
 
 @Pipe
+def as_int(obj):
+    return builtins.int(obj)
+
+
+@Pipe
+def as_str(obj):
+    return builtins.str(obj)
+
+
+@Pipe
 def as_list(iterable):
     return builtins.list(iterable)
 
@@ -202,6 +207,11 @@ def as_list(iterable):
 @Pipe
 def as_tuple(iterable):
     return builtins.tuple(iterable)
+
+
+@Pipe
+def as_dict(iterable):
+    return dict(iterable)
 
 
 @Pipe
