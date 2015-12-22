@@ -118,11 +118,6 @@ class NameResource(WebResource):
         :return:
         """
 
-        try:
-            pass
-        except:
-            pass
-
         self._set_response_headers(request)
 
         qname = request.args.get('name', []) | first
