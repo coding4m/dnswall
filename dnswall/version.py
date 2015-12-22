@@ -2,7 +2,7 @@
     Versions for Python packages.
 """
 
-__all__ = ['Version', 'current_version', 'as_str']
+__all__ = ['Version', 'current_version']
 
 
 class _Inf(object):

@@ -4,8 +4,9 @@ import re
 import urlparse
 import etcd
 from dnswall.commons import *
+from dnswall.errors import *
 
-__all__ = ["NameSpec", "NameRecord", "Backend", "BackendError", "BackendNotFound", "EtcdBackend"]
+__all__ = ["NameSpec", "NameRecord", "Backend", "EtcdBackend"]
 
 _ANYKEY = ''
 
@@ -88,20 +89,6 @@ class NameRecord(object):
 
     def to_dict(self):
         return {"name": self._name, "specs": self._specs | collect(lambda spec: spec.to_dict()) | as_list}
-
-
-class BackendError(Exception):
-    """
-
-    """
-    pass
-
-
-class BackendNotFound(BackendError):
-    """
-
-    """
-    pass
 
 
 class Backend(object):

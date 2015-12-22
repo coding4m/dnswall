@@ -3,11 +3,14 @@
 import argparse
 import re
 import urlparse
+
 from twisted.internet import reactor
 from twisted.names import dns, server
 from twisted.web.resource import Resource
 from twisted.web.server import Site
+
 from dnswall.backend import *
+from dnswall.errors import *
 from dnswall.handler import *
 from dnswall.resolver import *
 from dnswall.version import current_version
