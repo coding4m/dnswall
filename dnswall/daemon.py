@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import argparse
-import re
 import urlparse
 
 from twisted.internet import reactor
@@ -10,6 +9,7 @@ from twisted.web.resource import Resource
 from twisted.web.server import Site
 
 from dnswall.backend import *
+from dnswall.commons import *
 from dnswall.errors import *
 from dnswall.handler import *
 from dnswall.resolver import *
@@ -49,12 +49,12 @@ def main():
 
     backend = backend_cls(backend_options=backend_url)
 
-    dns_servers = re.split(r',|\s', daemon_args.nameservers)
+    dns_servers = daemon_args.nameservers | split(pattern=r',|\s')
     dns_factory = server.DNSServerFactory(
         clients=[BackendResolver(backend=backend), ProxyResovler(servers=dns_servers)]
     )
 
-    dns_addrpair = re.split(r':', daemon_args.addr)
+    dns_addrpair = daemon_args.addr | split(pattern=r':')
     if len(dns_addrpair) != __ADDRPAIR_LEN:
         raise ValueError("addr must like 0.0.0.0:53 format.")
 
@@ -67,7 +67,7 @@ def main():
 
     # listen for serve http request.
 
-    http_addrpair = re.split(r':', daemon_args.http_addr)
+    http_addrpair = daemon_args.http_addr | split(pattern=r':')
     if len(http_addrpair) != __ADDRPAIR_LEN:
         raise ValueError("http addr must like 0.0.0.0:9090 format.")
 
