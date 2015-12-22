@@ -19,7 +19,7 @@ __ADDRPAIR_LEN = 2
 __BACKENDS = {"etcd": EtcdBackend}
 
 
-def get_daemon_args():
+def _get_daemon_args():
     parser = argparse.ArgumentParser(prog='dnswall-daemon', description=current_version.desc)
 
     parser.add_argument('-backend', dest='backend', required=True,
@@ -38,7 +38,7 @@ def get_daemon_args():
 
 
 def main():
-    daemon_args = get_daemon_args()
+    daemon_args = _get_daemon_args()
 
     backend_url = daemon_args.backend
     backend_scheme = urlparse.urlparse(backend_url).scheme
