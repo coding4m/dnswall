@@ -37,7 +37,18 @@ class WebResource(object, resource.Resource):
 
 
 class VersionResource(WebResource):
+    """
+
+    """
+
     def __init__(self, name=None, version=None):
+        """
+
+        :param name:
+        :param version:
+        :return:
+        """
+
         super(VersionResource, self).__init__()
         self._name = name
         self._version = version
@@ -53,6 +64,11 @@ class NameResource(WebResource):
     """
 
     def __init__(self, backend=None):
+        """
+
+        :param backend:
+        :return:
+        """
         super(NameResource, self).__init__()
         self._backend = backend
 

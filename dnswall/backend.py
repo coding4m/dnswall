@@ -197,7 +197,7 @@ class EtcdBackend(Backend):
         """
 
         keys = [self._url.path] + (name.split('.') | reverse | as_list)
-        return keys | join(separator='/') | replace(pattern='////+', replacement='/')
+        return keys | join(separator='/') | replace(pattern=r'/+', replacement='/')
 
     def _rawname(self, key):
         """
