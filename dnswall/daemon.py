@@ -49,6 +49,12 @@ def main():
 
     backend = backend_cls(backend_options=backend_url)
 
+    _listen_dns(daemon_args, backend, reactor)
+    _listen_http(daemon_args, backend, reactor)
+    reactor.run()
+
+
+def _listen_dns(daemon_args, backend, _reactor):
     dns_servers = daemon_args.nameservers | split(pattern=r',|\s')
     dns_factory = server.DNSServerFactory(
         clients=[BackendResolver(backend=backend), ProxyResovler(servers=dns_servers)]
@@ -59,29 +65,24 @@ def main():
         raise ValueError("addr must like 0.0.0.0:53 format.")
 
     # listen for serve dns request.
-
     dns_port, dns_host = (dns_addr[1] | as_int, dns_addr[0],)
     reactor.listenUDP(dns_port, dns.DNSDatagramProtocol(controller=dns_factory),
                       interface=dns_host)
-    reactor.listenTCP(dns_port, dns_factory, interface=dns_host)
+    _reactor.listenTCP(dns_port, dns_factory, interface=dns_host)
 
-    # listen for serve http request.
 
+def _listen_http(daemon_args, backend, _reactor):
     http_addr = daemon_args.http_addr | split(pattern=r':')
     if len(http_addr) != __ADDRPAIR_LEN:
         raise ValueError("http addr must like 0.0.0.0:9090 format.")
 
     http_resource = Resource()
-
     version_resource = VersionResource(name=current_version.package, version=current_version.short())
     http_resource.putChild('', version_resource)
     http_resource.putChild('_version', version_resource)
     http_resource.putChild('names', NameResource(backend=backend))
-
     http_port, http_host = (http_addr[1] | as_int, http_addr[0],)
-    reactor.listenTCP(http_port, Site(http_resource), interface=http_host)
-
-    reactor.run()
+    _reactor.listenTCP(http_port, Site(http_resource), interface=http_host)
 
 
 if __name__ == '__main__':
