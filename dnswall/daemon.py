@@ -20,7 +20,7 @@ __BACKENDS = {"etcd": EtcdBackend}
 
 
 def get_daemon_args():
-    parser = argparse.ArgumentParser(prog=current_version.package, description=current_version.desc)
+    parser = argparse.ArgumentParser(prog='dnswall-daemon', description=current_version.desc)
 
     parser.add_argument('-backend', dest='backend', required=True,
                         help='which backend to use.')
