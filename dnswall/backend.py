@@ -2,9 +2,7 @@ import abc
 import json
 import re
 import urlparse
-
 import etcd
-
 from dnswall.commons import *
 
 __all__ = ["NameSpec", "NameRecord", "Backend", "BackendError", "BackendNotFound", "EtcdBackend"]
@@ -141,7 +139,7 @@ class Backend(object):
         """
 
         :param name: domain name.
-        :param namespecs: a NameSpec list or iter.
+        :param namespecs: a NameSpec list.
         :return:
         """
         pass
@@ -150,7 +148,7 @@ class Backend(object):
     def unregister(self, name):
         """
 
-        :param name:
+        :param name: domain name.
         :return:
         """
         pass
@@ -159,8 +157,8 @@ class Backend(object):
     def lookup(self, name):
         """
 
-        :param name:
-        :return: releative namespecs.
+        :param name: domain name.
+        :return: a releative NameRecord.
         """
         pass
 
@@ -168,7 +166,7 @@ class Backend(object):
     def lookall(self):
         """
 
-        :return:
+        :return: all NameRecords.
         """
         pass
 
@@ -192,10 +190,22 @@ class EtcdBackend(Backend):
         self._client = etcd.Client(host=host_tuple, allow_reconnect=True)
 
     def _etcdkey(self, name):
+        """
+
+        :param name: domain format string, like api.dnswall.io
+        :return: a etcd key format string, /io/dnswall/api
+        """
+
         keys = [self._url.path] + (name.split('.') | reverse | as_list)
         return keys | join(separator='/') | replace(pattern='////+', replacement='/')
 
     def _rawname(self, key):
+        """
+
+        :param key: etcd key, like /io/dnswall/api
+        :return: domain format string, like api.dnswall.io
+        """
+
         raw_key = key if key.endswith('/') else key + '/'
         raw_names = raw_key.split('/') | reverse | as_list
         return raw_names[1:-1] | join(separator='.') | replace(pattern='\.+', replacement='.')

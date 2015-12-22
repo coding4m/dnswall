@@ -1,19 +1,20 @@
 import json
-
 from twisted.python.compat import nativeString
 from twisted.web import resource, error, _responses
 from twisted.web.error import UnsupportedMethod
-
 from dnswall.backend import NameSpec
 from dnswall.commons import *
 
 __all__ = ['VersionResource', 'NameResource']
 
 
-class WebResource(resource.Resource):
+class WebResource(object, resource.Resource):
     """
 
     """
+
+    def __init__(self):
+        super(WebResource, self).__init__()
 
     def render(self, request):
         """
@@ -37,7 +38,7 @@ class WebResource(resource.Resource):
 
 class VersionResource(WebResource):
     def __init__(self, name=None, version=None):
-        WebResource.__init__(self)
+        super(VersionResource, self).__init__()
         self._name = name
         self._version = version
 
@@ -52,7 +53,7 @@ class NameResource(WebResource):
     """
 
     def __init__(self, backend=None):
-        WebResource.__init__(self)
+        super(NameResource, self).__init__()
         self._backend = backend
 
     def render_get(self, request):
