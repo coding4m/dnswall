@@ -173,7 +173,7 @@ class EtcdBackend(Backend):
 
         super(EtcdBackend, self).__init__(*args, **kwargs)
         host_pairs = [re.split(r':', addr) for addr in re.split(r',', self._url.netloc)]
-        host_tuple = tuple([(hostpair[0], int(hostpair[1])) for hostpair in host_pairs])
+        host_tuple = [(hostpair[0], int(hostpair[1])) for hostpair in host_pairs] | as_tuple
         self._client = etcd.Client(host=host_tuple, allow_reconnect=True)
 
     def _etcdkey(self, name):
@@ -183,7 +183,7 @@ class EtcdBackend(Backend):
         :return: a etcd key format string, /io/dnswall/api
         """
 
-        keys = [self._url.path] + (name.split('.') | reverse | as_list)
+        keys = [self._url.path] + (name | split(pattern=r'\.') | reverse | as_list)
         return keys | join(separator='/') | replace(pattern=r'/+', replacement='/')
 
     def _rawname(self, key):
@@ -194,7 +194,7 @@ class EtcdBackend(Backend):
         """
 
         raw_key = key if key.endswith('/') else key + '/'
-        raw_names = raw_key.split('/') | reverse | as_list
+        raw_names = raw_key | split(pattern=r'/') | reverse | as_list
         return raw_names[1:-1] | join(separator='.') | replace(pattern='\.+', replacement='.')
 
     def register(self, name, namespecs):
