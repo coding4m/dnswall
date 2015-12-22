@@ -105,9 +105,9 @@ class Backend(object):
         """
 
         backend_url = urlparse.urlparse(backend_options)
-        backend_name_patterns = urlparse.parse_qs(backend_url.query).get('pattern', [])
+        backend_patterns = urlparse.parse_qs(backend_url.query).get('pattern', [])
         self._url = backend_url
-        self._patterns = backend_name_patterns
+        self._patterns = backend_patterns
 
     def supports(self, name):
         """
