@@ -32,8 +32,9 @@ def _supervise(min_seconds=None, max_seconds=None):
             while True:
                 try:
                     return function(*args, **kwargs)
-                except Exception as e:
-                    _logger.w('error[%s] occurs, sleep %d seconds and retry again.', e, retry_seconds)
+                except Exception:
+                    _logger.ex('call occurs error.')
+                    _logger.w('sleep %d seconds and retry again.', retry_seconds)
 
                     time.sleep(retry_seconds)
                     next_retry_seconds *= 2
