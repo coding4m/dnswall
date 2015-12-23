@@ -1,12 +1,33 @@
 """
 
 """
+import time
 
 import docker
 import jsonselect
 
 from dnswall.backend import *
 from dnswall.operations import *
+
+
+class _BackOff(object):
+    def __init__(self, min_seconds=None, max_seconds=None, func=None):
+        self._min_seconds = min_seconds
+        self._max_seconds = max_seconds
+        self._func = func
+
+    def __call__(self, *args, **kwargs):
+
+        backoff_seconds = self._min_seconds
+        while True:
+            try:
+
+                return self._func(*args, **kwargs)
+            except:
+                # TODO
+                next_backoff_seconds = backoff_seconds * 2
+                backoff_seconds = next_backoff_seconds if next_backoff_seconds <= self._max_seconds else self._min_seconds
+                time.sleep(backoff_seconds)
 
 
 def loop(backend=None,
@@ -24,52 +45,51 @@ def loop(backend=None,
     :return:
     """
 
-    docker_client = docker.AutoVersionClient(base_url=docker_url)
-    try:
+    client = docker.AutoVersionClient(base_url=docker_url)
+    _BackOff(min_seconds=2, max_seconds=64, func=_event_loop)(backend, client)
 
-        docker_events = docker_client.events(decode=True, filters={'event': ['start', 'stop']})
-        for event in docker_events:
 
-            container = docker_client.inspect_container(jsonselect.select('.id', event))
+def _event_loop(backend, client):
+    docker_events = client.events(decode=True, filters={'event': ['start', 'stop']})
+    for event in docker_events:
 
-            all_environments = jsonselect.select('.Config .Env', container) \
-                               | collect(lambda env: env | split(pattern=r'=', maxsplit=1)) \
-                               | collect(lambda env: env | as_tuple) \
-                               | as_tuple \
-                               | as_dict
+        container = client.inspect_container(jsonselect.select('.id', event))
 
-            container_domain = jsonselect.select('.DOMAIN_NAME', all_environments)
-            if not container_domain:
-                continue
+        all_environments = jsonselect.select('.Config .Env', container) \
+                           | collect(lambda env: env | split(pattern=r'=', maxsplit=1)) \
+                           | collect(lambda env: env | as_tuple) \
+                           | as_tuple \
+                           | as_dict
 
-            event_status = jsonselect.select('.status', event)
-            if event_status == 'stop':
-                _unregister_domain(dnswall_url, container_domain)
-                continue
+        container_domain = jsonselect.select('.DOMAIN_NAME', all_environments)
+        if not container_domain:
+            continue
 
-            all_interesting_networks = jsonselect.select('.DOMAIN_NETWORKS', all_environments) \
-                                       | split(pattern=r',|\s') \
-                                       | as_tuple
+        event_status = jsonselect.select('.status', event)
+        if event_status == 'stop':
+            _unregister_domain(backend, container_domain)
+            continue
 
-            if not all_interesting_networks:
-                continue
+        all_interesting_networks = jsonselect.select('.DOMAIN_NETWORKS', all_environments) \
+                                   | split(pattern=r',|\s') \
+                                   | as_tuple
 
-            all_container_networks = jsonselect.select('.NetworkSettings .Networks', container)
-            if not all_container_networks:
-                continue
+        if not all_interesting_networks:
+            continue
 
-            container_networks = all_container_networks.items() \
-                                 | select(lambda item: item[0] in all_interesting_networks) \
-                                 | collect(lambda item: item[1]) \
-                                 | as_list
+        all_container_networks = jsonselect.select('.NetworkSettings .Networks', container)
+        if not all_container_networks:
+            continue
 
-            if not container_networks:
-                continue
+        container_networks = all_container_networks.items() \
+                             | select(lambda item: item[0] in all_interesting_networks) \
+                             | collect(lambda item: item[1]) \
+                             | as_list
 
-            _register_domain(dnswall_url, container_domain, container_networks)
-    except:
-        # TODO
-        pass
+        if not container_networks:
+            continue
+
+        _register_domain(backend, container_domain, container_networks)
 
 
 def _register_domain(backend, container_domain, container_networks):
