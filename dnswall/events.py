@@ -68,7 +68,7 @@ def _loop_events(backend, client):
     # consume real time events.
     events = client.events(decode=True, filters={'event': ['destroy', 'die', 'start', 'stop', 'pause']})
     for _ in events:
-        # TODO when container destroy, we may be lost the opportunity to unregister the container.
+        # TODO when container destroy, we may lost the opportunity to unregister the container.
         _loop_containers(backend, client)
 
 

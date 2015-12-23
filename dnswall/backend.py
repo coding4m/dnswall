@@ -18,7 +18,7 @@ class NameSpec(object):
 
     """
 
-    def __init__(self, host_ipv4=None, host_ipv6=None, ttl=0):
+    def __init__(self, host_ipv4=None, host_ipv6=None):
         """
 
         :param host_ipv4:
@@ -28,7 +28,6 @@ class NameSpec(object):
         """
         self._host_ipv4 = host_ipv4
         self._host_ipv6 = host_ipv6
-        self._ttl = ttl
 
     @property
     def host_ipv4(self):
@@ -46,16 +45,8 @@ class NameSpec(object):
         """
         return self._host_ipv6
 
-    @property
-    def ttl(self):
-        """
-
-        :return:
-        """
-        return self._ttl
-
     def to_dict(self):
-        return {"host_ipv4": self._host_ipv4, "host_ipv6": self._host_ipv6, "ttl": self._ttl}
+        return {"host_ipv4": self._host_ipv4, "host_ipv6": self._host_ipv6}
 
     @staticmethod
     def from_dict(dict_obj):
@@ -65,12 +56,11 @@ class NameSpec(object):
             raise ValueError('host_ipv4 and host_ipv4 both none or empty.')
 
         return NameSpec(host_ipv4=host_ipv4,
-                        host_ipv6=host_ipv6,
-                        ttl=dict_obj.get("ttl", 0))
+                        host_ipv6=host_ipv6)
 
 
 class NameRecord(object):
-    def __init__(self, name=None, specs=None):
+    def __init__(self, name=None, ttl=-1, specs=None):
         """
 
         :param name:
@@ -79,6 +69,7 @@ class NameRecord(object):
         """
 
         self._name = name
+        self._ttl = ttl
         self._specs = specs if specs else []
 
     @property
@@ -86,11 +77,16 @@ class NameRecord(object):
         return self._name
 
     @property
+    def ttl(self):
+        return self._ttl
+
+    @property
     def specs(self):
         return self._specs
 
     def to_dict(self):
-        return {"name": self._name, "specs": self._specs | collect(lambda spec: spec.to_dict()) | as_list}
+        return {"name": self._name, "ttl": self._ttl,
+                "specs": self._specs | collect(lambda spec: spec.to_dict()) | as_list}
 
 
 class Backend(object):
@@ -124,11 +120,12 @@ class Backend(object):
         return self._patterns | any(lambda pattern: name.endswith(pattern))
 
     @abc.abstractmethod
-    def register(self, name, namespecs):
+    def register(self, name, namespecs, ttl=None):
         """
 
-        :param name: domain name.
-        :param namespecs: a NameSpec list.
+        :param name:
+        :param namespecs:
+        :param ttl:
         :return:
         """
         pass
@@ -199,7 +196,8 @@ class EtcdBackend(Backend):
         raw_names = raw_key | split(pattern=r'/') | reverse | as_list
         return raw_names[1:-1] | join(separator='.') | replace(pattern='\.+', replacement='.')
 
-    def register(self, name, namespecs):
+    def register(self, name, namespecs, ttl=None):
+        # TODO
 
         if not isinstance(namespecs, (list, tuple)):
             raise ValueError('namespecs must be list or tuple.')
@@ -241,7 +239,7 @@ class EtcdBackend(Backend):
             if not result.value:
                 return NameRecord(name=name)
 
-            return self._as_record(name, json.loads(result.value))
+            return self._as_record(name, result.ttl, json.loads(result.value))
         except etcd.EtcdKeyError:
             return NameRecord(name=name)
         except Exception as e:
@@ -260,23 +258,22 @@ class EtcdBackend(Backend):
             print(e)
             pass
 
-    def _as_record(self, name, speclist):
+    def _as_record(self, name, ttl, speclist):
         return NameRecord(name=name,
+                          ttl=ttl,
                           specs=speclist | collect(lambda spec: NameSpec.from_dict(spec)) | as_list)
 
     def _as_records(self, result):
 
         records = []
-        if result.value:
-            speclist = json.loads(result.value)
-            records.append(self._as_record(self._rawname(result.key), speclist))
+        self._append_records(result, records)
 
         for child in result.children:
-            self._as_children_records(child, records)
+            self._append_records(child, records)
         return records
 
-    def _as_children_records(self, child, records):
+    def _append_records(self, result, records):
 
-        if child.value:
-            speclist = json.loads(child.value)
-            records.append(self._as_record(self._rawname(child.key), speclist))
+        if result.value:
+            speclist = json.loads(result.value)
+            records.append(self._as_record(self._rawname(result.key), result.ttl, speclist))
