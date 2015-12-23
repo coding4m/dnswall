@@ -143,4 +143,4 @@ class Version(object):
         return x
 
 
-current_version = Version('dnswall', 1, 0, 0, desc='a dns server using key-value backends.')
+current_version = Version('dnswall', 1, 0, 0, desc='dns server for docker using key-value backends.')

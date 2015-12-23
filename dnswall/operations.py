@@ -6,6 +6,7 @@ import re
 import socket
 import sys
 from contextlib import closing
+from datetime import datetime
 from functools import reduce
 
 __author__ = 'Julien Palard <julien@eeple.fr>'
@@ -197,6 +198,15 @@ def as_int(obj):
 @Pipe
 def as_str(obj):
     return builtins.str(obj)
+
+
+@Pipe
+def as_timestamp(obj):
+    if not isinstance(obj, datetime):
+        raise TypeError('obj must be a datetime.')
+    else:
+        delta = obj - datetime.utcfromtimestamp(0)
+        return delta.seconds + delta.days * 24 * 3600
 
 
 @Pipe
