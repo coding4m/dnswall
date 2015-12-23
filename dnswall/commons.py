@@ -172,12 +172,12 @@ def traverse(args):
 
 
 @Pipe
-def join(iterable, separator=", "):
+def join(iterable, separator):
     return separator.join(builtins.map(str, iterable))
 
 
 @Pipe
-def split(iterable, pattern=", ", maxsplit=0):
+def split(iterable, pattern, maxsplit=0):
     if isinstance(iterable, (str,)):
         return re.split(pattern, iterable, maxsplit=maxsplit)
     else:
@@ -186,7 +186,7 @@ def split(iterable, pattern=", ", maxsplit=0):
 
 
 @Pipe
-def replace(to_replace, pattern=None, replacement=None):
+def replace(to_replace, pattern, replacement):
     return re.sub(pattern, replacement, to_replace)
 
 

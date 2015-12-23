@@ -16,9 +16,10 @@ def _get_daemon_args():
     parser.add_argument('-docker-url', dest='docker_url', default='unix:///var/run/docker.sock',
                         help='')
 
-    parser.add_argument('--docker-tls-verify', dest='docker_tls_verify')
-    parser.add_argument('--docker-tls-ca', dest='docker_tls_ca')
-    parser.add_argument('--docker-tls-cert', dest='docker_tls_cert')
+    parser.add_argument('--docker-tlsverify', dest='docker_tls_verify', default=False, action='store_true')
+    parser.add_argument('--docker-tlsca', dest='docker_tls_ca')
+    parser.add_argument('--docker-tlskey', dest='docker_tls_key')
+    parser.add_argument('--docker-tlscert', dest='docker_tls_cert')
     return parser.parse_args()
 
 
@@ -36,6 +37,7 @@ def main():
                 docker_url=daemon_args.docker_url,
                 docker_tls_verify=daemon_args.docker_tls_verify,
                 docker_tls_ca=daemon_args.docker_tls_ca,
+                docker_tls_key=daemon_args.docker_tls_key,
                 docker_tls_cert=daemon_args.docker_tls_cert)
 
 

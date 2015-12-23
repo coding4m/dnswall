@@ -7,8 +7,8 @@ from twisted.internet import reactor
 from twisted.names import dns, server
 
 from dnswall.backend import *
-from dnswall.errors import *
 from dnswall.commons import *
+from dnswall.errors import *
 from dnswall.resolver import *
 from dnswall.version import current_version
 
@@ -44,12 +44,12 @@ def main():
 
     backend = backend_cls(backend_options=backend_url)
 
-    dns_servers = daemon_args.nameservers | split(pattern=r',|\s')
+    dns_servers = daemon_args.nameservers | split(r',|\s')
     dns_factory = server.DNSServerFactory(
         clients=[BackendResolver(backend=backend), ProxyResovler(servers=dns_servers)]
     )
 
-    dns_addr = daemon_args.addr | split(pattern=r':')
+    dns_addr = daemon_args.addr | split(r':')
     if len(dns_addr) != __ADDRPAIR_LEN:
         raise ValueError("addr must like 0.0.0.0:53 format.")
 

@@ -7,11 +7,11 @@ import time
 import docker
 import jsonselect
 
-from dnswall import logger
+from dnswall import loggers
 from dnswall.backend import *
 from dnswall.commons import *
 
-_logger = logger.get_logger('d.e.Loop')
+_logger = loggers.get_logger('d.e.Loop')
 
 
 def _supervise(min_seconds=None, max_seconds=None):
@@ -32,7 +32,7 @@ def _supervise(min_seconds=None, max_seconds=None):
             while True:
                 try:
                     return function(*args, **kwargs)
-                except Exception:
+                except:
                     _logger.ex('call occurs error.')
                     _logger.w('sleep %d seconds and retry again.', retry_seconds)
 
@@ -51,6 +51,7 @@ def loop(backend=None,
          docker_url=None,
          docker_tls_verify=False,
          docker_tls_ca=None,
+         docker_tls_key=None,
          docker_tls_cert=None):
     """
 
@@ -58,6 +59,7 @@ def loop(backend=None,
     :param docker_url:
     :param docker_tls_verify:
     :param docker_tls_ca:
+    :param docker_tls_key:
     :param docker_tls_cert:
     :return:
     """
@@ -95,7 +97,7 @@ def _get_container(client, container_id):
 
 def _handle_container(backend, container):
     container_environments = jsonselect.select('.Config .Env', container) \
-                             | collect(lambda env: env | split(pattern=r'=', maxsplit=1)) \
+                             | collect(lambda env: env | split(r'=', maxsplit=1)) \
                              | collect(lambda env: env | as_tuple) \
                              | as_tuple \
                              | as_dict
@@ -133,9 +135,11 @@ def _handle_container(backend, container):
 
 def _register_container(backend, container_domain, container_networks):
     _logger.w('register container[domain_name=%s] to backend.', container_domain)
+
     namespecs = container_networks \
-                | collect(lambda item: NameSpec(host_ipv4=jsonselect.select('.IPAddress', item),
-                                                host_ipv6=jsonselect.select('.GlobalIPv6Address', item))) \
+                | collect(lambda item: (jsonselect.select('.IPAddress', item),
+                                        jsonselect.select('.GlobalIPv6Address', item),)) \
+                | collect(lambda item: NameSpec(host_ipv4=item[0], host_ipv6=item[1])) \
                 | as_list
 
     backend.register(container_domain, namespecs)

@@ -2,7 +2,7 @@ from twisted.internet import defer, threads
 from twisted.names import dns
 from twisted.names.client import Resolver as ProxyResovler
 
-from dnswall import logger
+from dnswall import loggers
 from dnswall.commons import *
 
 __all__ = ["BackendResolver", "ProxyResovler"]
@@ -20,7 +20,7 @@ class BackendResolver(object):
         :return:
         """
         self._backend = backend
-        self._logger = logger.get_logger('d.r.BackendResolver')
+        self._logger = loggers.get_logger('d.r.BackendResolver')
 
     def query(self, query, timeout=None):
         """
