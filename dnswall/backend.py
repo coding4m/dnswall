@@ -10,8 +10,6 @@ from dnswall.errors import *
 
 __all__ = ["NameSpec", "NameRecord", "Backend", "EtcdBackend"]
 
-_ANYKEY = ''
-
 
 class NameSpec(object):
     """
@@ -177,12 +175,15 @@ class EtcdBackend(Backend):
         self._client = etcd.Client(host=host_tuple, allow_reconnect=True)
         self._logger = loggers.get_logger('d.b.EtcdBackend')
 
-    def _etcdkey(self, name):
+    def _etcdkey(self, name=None):
         """
 
         :param name: domain format string, like api.dnswall.io
         :return: a etcd key format string, /io/dnswall/api
         """
+
+        if not name:
+            return '/'
 
         keys = [self._url.path] + (name | split(r'\.') | reverse | as_list)
         return keys | join('/') | replace(r'/+', '/')
@@ -239,7 +240,7 @@ class EtcdBackend(Backend):
     def lookall(self):
         try:
 
-            result = self._client.read(self._etcdkey(_ANYKEY), recursive=True)
+            result = self._client.read(self._etcdkey(), recursive=True)
             return self._as_records(result)
         except etcd.EtcdKeyError:
             self._logger.w('lookall occurs etcd key error, just ignore it.')
