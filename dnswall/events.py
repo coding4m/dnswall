@@ -50,10 +50,10 @@ def loop(backend=None,
 
 
 def _loop_event(backend, client):
-    docker_events = client.events(decode=True, filters={'event': ['start', 'stop']})
-    for event in docker_events:
+    _events = client.events(decode=True, filters={'event': ['start', 'stop']})
+    for _event in _events:
 
-        container = client.inspect_container(jsonselect.select('.id', event))
+        container = client.inspect_container(jsonselect.select('.id', _event))
 
         all_environments = jsonselect.select('.Config .Env', container) \
                            | collect(lambda env: env | split(pattern=r'=', maxsplit=1)) \
@@ -65,7 +65,7 @@ def _loop_event(backend, client):
         if not container_domain:
             continue
 
-        event_status = jsonselect.select('.status', event)
+        event_status = jsonselect.select('.status', _event)
         if event_status == 'stop':
             _unregister_domain(backend, container_domain)
             continue
