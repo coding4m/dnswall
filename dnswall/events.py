@@ -48,6 +48,7 @@ def loop(backend=None,
     :return:
     """
 
+    # TODO
     client = docker.AutoVersionClient(base_url=docker_url)
     _Supervisor(min_seconds=2, max_seconds=64, func=_loop_events)(backend, client)
 
