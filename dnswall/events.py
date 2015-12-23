@@ -66,18 +66,25 @@ def _loop_events(backend, client):
     events = client.events(decode=True, filters={'event': ['destroy', 'die', 'start', 'stop', 'pause']})
 
     # now loop containers.
-    _loop_containers(backend, client)
-    for _ in events:
+    _handle_containers(backend, _get_containers(client))
+    for event in events:
         # TODO when container destroy, we may lost the opportunity to unregister the container.
-        _loop_containers(backend, client)
+        _handle_container(backend, _get_container(client, jsonselect.select('.id', event)))
 
 
-def _loop_containers(backend, client):
-    containers = client.containers(quiet=True, all=True) \
-                 | collect(lambda container: jsonselect.select('.Id', container)) \
-                 | collect(lambda container_id: client.inspect_container(container_id))
+def _get_containers(client):
+    return client.containers(quiet=True, all=True) \
+           | collect(lambda container: jsonselect.select('.Id', container)) \
+           | collect(lambda container_id: _get_container(client, container_id))
+
+
+def _handle_containers(backend, containers):
     for container in containers:
         _handle_container(backend, container)
+
+
+def _get_container(client, container_id):
+    return client.inspect_container(container_id)
 
 
 def _handle_container(backend, container):
