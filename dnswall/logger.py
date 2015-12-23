@@ -31,4 +31,11 @@ def get_logger(name, level=logging.WARN):
                 setattr(_logger, item[1], m)
         except AttributeError:
             pass
+
+    def _ex(msg, *args, **kwargs):
+        kwargs['exc_info'] = True
+        _logger.error(msg, *args, **kwargs)
+
+    if not hasattr(_logger, 'ex'):
+        setattr(_logger, 'ex', _ex)
     return _logger
