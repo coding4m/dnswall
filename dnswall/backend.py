@@ -5,8 +5,9 @@ import urlparse
 
 import etcd
 
-from dnswall.errors import *
+from dnswall import logger
 from dnswall.commons import *
+from dnswall.errors import *
 
 __all__ = ["NameSpec", "NameRecord", "Backend", "EtcdBackend"]
 
@@ -23,7 +24,6 @@ class NameSpec(object):
 
         :param host_ipv4:
         :param host_ipv6:
-        :param ttl:
         :return:
         """
         self._host_ipv4 = host_ipv4
@@ -69,7 +69,7 @@ class NameRecord(object):
         """
 
         self._name = name
-        self._ttl = ttl
+        self._ttl = ttl if ttl else -1
         self._specs = specs if specs else []
 
     @property
@@ -174,6 +174,7 @@ class EtcdBackend(Backend):
         host_pairs = [re.split(r':', addr) for addr in re.split(r',', self._url.netloc)]
         host_tuple = [(hostpair[0], int(hostpair[1])) for hostpair in host_pairs] | as_tuple
         self._client = etcd.Client(host=host_tuple, allow_reconnect=True)
+        self._logger = logger.get_logger('d.b.EtcdBackend')
 
     def _etcdkey(self, name):
         """
@@ -197,41 +198,29 @@ class EtcdBackend(Backend):
         return raw_names[1:-1] | join(separator='.') | replace(pattern='\.+', replacement='.')
 
     def register(self, name, namespecs, ttl=None):
-        # TODO
-
-        if not isinstance(namespecs, (list, tuple)):
-            raise ValueError('namespecs must be list or tuple.')
-
-        if not self.supports(name):
-            raise BackendError("name={} unsupport.".format(name))
-
         try:
 
             speclist = namespecs | collect(lambda spec: spec.to_dict()) | as_list
-            self._client.set(self._etcdkey(name), json.dumps(speclist))
+            self._client.set(self._etcdkey(name), json.dumps(speclist), ttl)
         except Exception as e:
-            # TODO
-            print(e)
+            self._logger.e('register name=%s, specs=%s occurs error.', name, namespecs)
             raise BackendError
 
     def unregister(self, name):
-
-        if not name:
-            raise ValueError('name must not be none or empty.')
-
         try:
 
             self._client.delete(self._etcdkey(name))
         except etcd.EtcdKeyError:
-            pass
+            self._logger.w('unregister name=%s occurs etcd key error, just ignore it.', name)
         except:
             # TODO
+            self._logger.e('unregister name=%s occurs error.', name)
             raise BackendError
 
     def lookup(self, name):
 
         if not self.supports(name):
-            raise BackendError("name={} unsupport.".format(name))
+            raise BackendError("name=%s unsupport.".format(name))
 
         try:
 
@@ -241,10 +230,11 @@ class EtcdBackend(Backend):
 
             return self._as_record(name, result.ttl, json.loads(result.value))
         except etcd.EtcdKeyError:
+            self._logger.w('lookup name=%s occurs etcd key error, just ignore it.', name)
             return NameRecord(name=name)
         except Exception as e:
             # TODO
-            print(e)
+            self._logger.e('lookup name=%s occurs error.', name)
             raise BackendError
 
     def lookall(self):
@@ -253,10 +243,11 @@ class EtcdBackend(Backend):
             result = self._client.read(self._etcdkey(_ANYKEY), recursive=True)
             return self._as_records(result)
         except etcd.EtcdKeyError:
+            self._logger.w('lookall occurs etcd key error, just ignore it.')
             return []
         except Exception as e:
-            print(e)
-            pass
+            self._logger.e('lookall occurs error.', name)
+            raise BackendError
 
     def _as_record(self, name, ttl, speclist):
         return NameRecord(name=name,

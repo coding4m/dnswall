@@ -2,6 +2,7 @@ from twisted.internet import defer, threads
 from twisted.names import dns
 from twisted.names.client import Resolver as ProxyResovler
 
+from dnswall import logger
 from dnswall.commons import *
 
 __all__ = ["BackendResolver", "ProxyResovler"]
@@ -19,6 +20,7 @@ class BackendResolver(object):
         :return:
         """
         self._backend = backend
+        self._logger = logger.get_logger('d.r.BackendResolver')
 
     def query(self, query, timeout=None):
         """
@@ -32,11 +34,12 @@ class BackendResolver(object):
         qtype = query.type
 
         if not self._backend.supports(qname):
+            self._logger.w('unsupported query name [%s], forward it.', qname)
             return defer.fail(dns.DomainError())
 
         # only supports A and AAAA qtype.
         if qtype not in (dns.A, dns.AAAA):
-            # TODO
+            self._logger.w('unsupported query type [%d], forward it.', qtype)
             return defer.fail(dns.DomainError())
 
         def _lookup_backend(backend, qn, qt):

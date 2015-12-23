@@ -7,8 +7,11 @@ import time
 import docker
 import jsonselect
 
+from dnswall import logger
 from dnswall.backend import *
 from dnswall.commons import *
+
+_logger = logger.get_logger('d.e.Loop')
 
 
 def _supervise(min_seconds=None, max_seconds=None):
@@ -30,9 +33,9 @@ def _supervise(min_seconds=None, max_seconds=None):
                 try:
                     return function(*args, **kwargs)
                 except:
-                    # TODO
-                    time.sleep(retry_seconds)
+                    _logger.w('occurs error, sleep %d seconds and retry again.', retry_seconds)
 
+                    time.sleep(retry_seconds)
                     next_retry_seconds *= 2
                     if next_retry_seconds > max_seconds:
                         next_retry_seconds = min_seconds
@@ -128,6 +131,7 @@ def _handle_container(backend, container):
 
 
 def _register_container(backend, container_domain, container_networks):
+    _logger.w('register container[domain_name=%s] to backend.', container_domain)
     namespecs = container_networks \
                 | collect(lambda item: NameSpec(host_ipv4=jsonselect.select('.IPAddress', item),
                                                 host_ipv6=jsonselect.select('.GlobalIPv6Address', item))) \
@@ -137,4 +141,5 @@ def _register_container(backend, container_domain, container_networks):
 
 
 def _unregister_container(backend, container_domain):
+    _logger.w('unregister container[domain_name=%s] from backend.', container_domain)
     backend.unregister(container_domain)
