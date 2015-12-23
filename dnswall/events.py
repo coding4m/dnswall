@@ -1,6 +1,7 @@
 """
 
 """
+import functools
 import time
 
 import docker
@@ -10,27 +11,34 @@ from dnswall.backend import *
 from dnswall.operations import *
 
 
-class _Supervisor(object):
-    def __init__(self, min_seconds=None, max_seconds=None, func=None):
-        self._min_seconds = min_seconds
-        self._max_seconds = max_seconds
-        self._func = func
+def _supervise(min_seconds=None, max_seconds=None):
+    """
 
-    def __call__(self, *args, **kwargs):
+    :param min_seconds:
+    :param max_seconds:
+    :return:
+    """
 
-        retry_seconds = self._min_seconds
-        next_retry_seconds = retry_seconds
-        while True:
-            try:
-                return self._func(*args, **kwargs)
-            except:
-                # TODO
-                time.sleep(retry_seconds)
+    def decorator(function):
+        @functools.wraps(function)
+        def wrapped(*args, **kwargs):
+            retry_seconds = min_seconds
+            next_retry_seconds = retry_seconds
+            while True:
+                try:
+                    return function(*args, **kwargs)
+                except:
+                    # TODO
+                    time.sleep(retry_seconds)
 
-                next_retry_seconds *= 2
-                if next_retry_seconds > self._max_seconds:
-                    next_retry_seconds = self._min_seconds
-                retry_seconds = next_retry_seconds
+                    next_retry_seconds *= 2
+                    if next_retry_seconds > max_seconds:
+                        next_retry_seconds = min_seconds
+                    retry_seconds = next_retry_seconds
+
+        return wrapped
+
+    return decorator
 
 
 def loop(backend=None,
@@ -49,8 +57,8 @@ def loop(backend=None,
     """
 
     # TODO
-    client = docker.AutoVersionClient(base_url=docker_url)
-    _Supervisor(min_seconds=2, max_seconds=64, func=_loop_events)(backend, client)
+    _client = docker.AutoVersionClient(base_url=docker_url)
+    _supervise(min_seconds=2, max_seconds=64)(_loop_events)(backend, _client)
 
 
 def _loop_events(backend, client):
@@ -58,8 +66,9 @@ def _loop_events(backend, client):
     _loop_containers(backend, client)
 
     # consume real time events.
-    _events = client.events(decode=True, filters={'event': ['start', 'stop', 'pause']})
-    for _ in _events:
+    events = client.events(decode=True, filters={'event': ['destroy', 'die', 'start', 'stop', 'pause']})
+    for _ in events:
+        #
         _loop_containers(backend, client)
 
 
