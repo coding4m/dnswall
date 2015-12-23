@@ -6,7 +6,7 @@ import urlparse
 import etcd
 
 from dnswall.errors import *
-from dnswall.operations import *
+from dnswall.commons import *
 
 __all__ = ["NameSpec", "NameRecord", "Backend", "EtcdBackend"]
 

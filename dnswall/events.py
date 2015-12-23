@@ -8,7 +8,7 @@ import docker
 import jsonselect
 
 from dnswall.backend import *
-from dnswall.operations import *
+from dnswall.commons import *
 
 
 def _supervise(min_seconds=None, max_seconds=None):

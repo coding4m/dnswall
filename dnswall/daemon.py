@@ -8,7 +8,7 @@ from twisted.names import dns, server
 
 from dnswall.backend import *
 from dnswall.errors import *
-from dnswall.operations import *
+from dnswall.commons import *
 from dnswall.resolver import *
 from dnswall.version import current_version
 
