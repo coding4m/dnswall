@@ -46,10 +46,10 @@ def loop(backend=None,
     """
 
     client = docker.AutoVersionClient(base_url=docker_url)
-    _BackOff(min_seconds=2, max_seconds=64, func=_event_loop)(backend, client)
+    _BackOff(min_seconds=2, max_seconds=64, func=_loop_event)(backend, client)
 
 
-def _event_loop(backend, client):
+def _loop_event(backend, client):
     docker_events = client.events(decode=True, filters={'event': ['start', 'stop']})
     for event in docker_events:
 
