@@ -3,7 +3,7 @@ import json
 import re
 import urlparse
 import etcd
-from dnswall.commons import *
+from dnswall.operations import *
 from dnswall.errors import *
 
 __all__ = ["NameSpec", "NameRecord", "Backend", "EtcdBackend"]

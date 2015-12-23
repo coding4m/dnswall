@@ -2,7 +2,7 @@ from twisted.internet import defer, threads
 from twisted.names import dns
 from twisted.names.client import Resolver as ProxyResovler
 
-from dnswall.commons import *
+from dnswall.operations import *
 
 __all__ = ["BackendResolver", "ProxyResovler"]
 
