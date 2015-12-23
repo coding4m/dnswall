@@ -249,10 +249,6 @@ class EtcdBackend(Backend):
             print(e)
             raise BackendError
 
-    def _as_record(self, name, speclist):
-        return NameRecord(name=name,
-                          specs=speclist | collect(lambda spec: NameSpec.from_dict(spec)) | as_list)
-
     def lookall(self):
         try:
 
@@ -263,6 +259,10 @@ class EtcdBackend(Backend):
         except Exception as e:
             print(e)
             pass
+
+    def _as_record(self, name, speclist):
+        return NameRecord(name=name,
+                          specs=speclist | collect(lambda spec: NameSpec.from_dict(spec)) | as_list)
 
     def _as_records(self, result):
 

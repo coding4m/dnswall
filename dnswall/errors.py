@@ -2,7 +2,14 @@
 
 """
 
-__all__ = ["BackendError", "BackendNotFound"]
+__all__ = ["WallError", "BackendError", "BackendNotFound"]
+
+
+class WallError(Exception):
+    """
+
+    """
+    pass
 
 
 class BackendError(Exception):
