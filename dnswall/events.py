@@ -22,8 +22,10 @@ def _supervise(min_seconds=None, max_seconds=None):
     def decorator(function):
         @functools.wraps(function)
         def wrapped(*args, **kwargs):
+
             retry_seconds = min_seconds
             next_retry_seconds = retry_seconds
+
             while True:
                 try:
                     return function(*args, **kwargs)
@@ -58,10 +60,10 @@ def loop(backend=None,
 
     # TODO
     _client = docker.AutoVersionClient(base_url=docker_url)
-    _supervise(min_seconds=2, max_seconds=64)(_loop_events)(backend, _client)
+    _supervise(min_seconds=2, max_seconds=64)(_event_loop)(backend, _client)
 
 
-def _loop_events(backend, client):
+def _event_loop(backend, client):
     # consume real time events first.
     events = client.events(decode=True, filters={'event': ['destroy', 'die', 'start', 'stop', 'pause']})
 
