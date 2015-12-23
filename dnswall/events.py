@@ -21,12 +21,13 @@ class _BackOff(object):
         backoff_seconds = self._min_seconds
         while True:
             try:
-
+                next_backoff_seconds = backoff_seconds * 2
+                backoff_seconds = next_backoff_seconds \
+                    if next_backoff_seconds <= self._max_seconds \
+                    else self._min_seconds
                 return self._func(*args, **kwargs)
             except:
                 # TODO
-                next_backoff_seconds = backoff_seconds * 2
-                backoff_seconds = next_backoff_seconds if next_backoff_seconds <= self._max_seconds else self._min_seconds
                 time.sleep(backoff_seconds)
 
 
