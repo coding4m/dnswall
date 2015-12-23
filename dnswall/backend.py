@@ -2,9 +2,11 @@ import abc
 import json
 import re
 import urlparse
+
 import etcd
-from dnswall.operations import *
+
 from dnswall.errors import *
+from dnswall.operations import *
 
 __all__ = ["NameSpec", "NameRecord", "Backend", "EtcdBackend"]
 
