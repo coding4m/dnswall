@@ -32,8 +32,8 @@ def _supervise(min_seconds=None, max_seconds=None):
             while True:
                 try:
                     return function(*args, **kwargs)
-                except:
-                    _logger.w('occurs error, sleep %d seconds and retry again.', retry_seconds)
+                except Exception as e:
+                    _logger.w('error[%s] occurs, sleep %d seconds and retry again.', e, retry_seconds)
 
                     time.sleep(retry_seconds)
                     next_retry_seconds *= 2

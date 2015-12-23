@@ -205,7 +205,7 @@ class EtcdBackend(Backend):
             speclist = namespecs | collect(lambda spec: spec.to_dict()) | as_list
             self._client.set(self._etcdkey(name), json.dumps(speclist), ttl)
         except Exception as e:
-            self._logger.e('register name=%s, specs=%s occurs error.', name, namespecs)
+            self._logger.e('register name=%s, specs=%s occurs error[%s].', name, namespecs, e)
             raise BackendError
 
     def unregister(self, name):
@@ -214,9 +214,9 @@ class EtcdBackend(Backend):
             self._client.delete(self._etcdkey(name))
         except etcd.EtcdKeyError:
             self._logger.w('unregister name=%s occurs etcd key error, just ignore it.', name)
-        except:
+        except Exception as e:
             # TODO
-            self._logger.e('unregister name=%s occurs error.', name)
+            self._logger.e('unregister name=%s occurs error[%s].', name, e)
             raise BackendError
 
     def lookup(self, name):
@@ -235,8 +235,7 @@ class EtcdBackend(Backend):
             self._logger.w('lookup name=%s occurs etcd key error, just ignore it.', name)
             return NameRecord(name=name)
         except Exception as e:
-            # TODO
-            self._logger.e('lookup name=%s occurs error.', name)
+            self._logger.e('lookup name=%s occurs error[%s].', name, e)
             raise BackendError
 
     def lookall(self):
@@ -248,7 +247,7 @@ class EtcdBackend(Backend):
             self._logger.w('lookall occurs etcd key error, just ignore it.')
             return []
         except Exception as e:
-            self._logger.e('lookall occurs error.', name)
+            self._logger.e('lookall occurs error[%s].', e)
             raise BackendError
 
     def _as_record(self, name, ttl, speclist):
