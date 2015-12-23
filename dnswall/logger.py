@@ -11,7 +11,8 @@ _logger_methods = {
     'debug': 'd',
     'info': 'i',
     'warn': 'w',
-    'error': 'e'
+    'error': 'e',
+    'exception': 'ex'
 }
 
 
@@ -32,10 +33,4 @@ def get_logger(name, level=logging.WARN):
         except AttributeError:
             pass
 
-    def _ex(msg, *args, **kwargs):
-        kwargs['exc_info'] = True
-        _logger.error(msg, *args, **kwargs)
-
-    if not hasattr(_logger, 'ex'):
-        setattr(_logger, 'ex', _ex)
     return _logger
