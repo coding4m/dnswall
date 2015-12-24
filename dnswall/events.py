@@ -32,6 +32,9 @@ def _supervise(min_seconds=None, max_seconds=None):
             while True:
                 try:
                     return function(*args, **kwargs)
+                except KeyboardInterrupt:
+                    _logger.w('thread interrupted, stop supervise and exit.')
+                    return None
                 except:
                     _logger.ex('function call occurs error.')
                     _logger.w('sleep %d seconds and retry again.', retry_seconds)
@@ -72,7 +75,7 @@ def loop(backend=None,
 
 def _event_loop(backend, client):
     # consume real time events first.
-    events = client.events(decode=True, filters={'event': ['destroy', 'die', 'start', 'stop', 'pause']})
+    events = client.events(decode=True, filters={'event': ['start', 'stop', 'pause', 'unpause']})
 
     # now loop containers.
     _handle_containers(backend, _get_containers(client))
