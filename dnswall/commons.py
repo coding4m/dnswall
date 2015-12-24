@@ -178,11 +178,7 @@ def join(iterable, separator):
 
 @Pipe
 def split(iterable, pattern, maxsplit=0):
-    if isinstance(iterable, (str,)):
-        return re.split(pattern, iterable, maxsplit=maxsplit)
-    else:
-        as_strs = builtins.map(str, iterable)
-        return builtins.map(lambda astr: re.split(pattern, astr, maxsplit=maxsplit), as_strs)
+    return re.split(pattern, iterable, maxsplit=maxsplit)
 
 
 @Pipe

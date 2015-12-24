@@ -42,7 +42,7 @@ class BackendResolver(object):
             self._logger.w('unsupported query type [%d], forward it.', qtype)
             return defer.fail(dns.DomainError())
 
-        def _lookup_backend(backend, qn, qt):
+        def _lookup_backend(backend, logger, qn, qt):
             """
 
             :param backend:
@@ -51,7 +51,14 @@ class BackendResolver(object):
             :return: three-tuple(answers, authorities, additional)
                         of lists of twisted.names.dns.RRHeader instances.
             """
-            namerecord = backend.lookup(qn)
+
+            try:
+
+                namerecord = backend.lookup(qn)
+            except:
+                logger.ex('lookup name record occurs error, just ignore and forward it.')
+                return [], [], []
+
             if not namerecord.specs:
                 return [], [], []
 
@@ -73,4 +80,4 @@ class BackendResolver(object):
 
                 return answers, [], []
 
-        return threads.deferToThread(_lookup_backend, self._backend, qname, qtype)
+        return threads.deferToThread(_lookup_backend, self._backend, self._logger, qname, qtype)

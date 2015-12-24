@@ -1,10 +1,14 @@
 #!/usr/bin/env python
 
 import argparse
+import urlparse
 
 from dnswall import events
+from dnswall.backend import *
 from dnswall.errors import *
 from dnswall.version import current_version
+
+__BACKENDS = {"etcd": EtcdBackend}
 
 
 def _get_daemon_args():
@@ -20,7 +24,8 @@ def _get_daemon_args():
     parser.add_argument('--docker-tlsca', dest='docker_tls_ca')
     parser.add_argument('--docker-tlskey', dest='docker_tls_key')
     parser.add_argument('--docker-tlscert', dest='docker_tls_cert')
-    return parser.parse_args()
+    return parser.parse_args(['-backend', 'etcd://127.0.0.1:4001/dnswall',
+                              '-docker-url', 'tcp://172.16.1.21:2376'])
 
 
 def main():
