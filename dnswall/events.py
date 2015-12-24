@@ -33,7 +33,7 @@ def _supervise(min_seconds=None, max_seconds=None):
                 try:
                     return function(*args, **kwargs)
                 except:
-                    _logger.ex('call occurs error.')
+                    _logger.ex('function call occurs error.')
                     _logger.w('sleep %d seconds and retry again.', retry_seconds)
 
                     time.sleep(retry_seconds)
@@ -82,7 +82,7 @@ def _event_loop(backend, client):
 
 def _get_containers(client):
     return client.containers(quiet=True, all=True) \
-           | collect(lambda container: jsonselect.select('.Id', container)) \
+           | collect(lambda container: _jsonselect(container, '.Id')) \
            | collect(lambda container_id: _get_container(client, container_id))
 
 
@@ -96,29 +96,29 @@ def _get_container(client, container_id):
 
 
 def _handle_container(backend, container):
-    container_environments = jsonselect.select('.Config .Env', container) \
+    container_environments = _jsonselect(container, '.Config .Env') \
                              | collect(lambda env: env | split(r'=', maxsplit=1)) \
                              | collect(lambda env: env | as_tuple) \
                              | as_tuple \
                              | as_dict
 
-    container_domain = jsonselect.select('.DOMAIN_NAME', container_environments)
+    container_domain = _jsonselect(container_environments, '.DOMAIN_NAME')
     if not container_domain:
         return
 
-    container_status = jsonselect.select('.State .Status', container)
+    container_status = _jsonselect(container, '.State .Status')
     if container_status in ['paused', 'exited']:
         _unregister_container(backend, container_domain)
         return
 
-    interesting_networks = jsonselect.select('.DOMAIN_NETWORKS', container_environments) \
+    interesting_networks = _jsonselect(container_environments, '.DOMAIN_NETWORKS') \
                            | split(pattern=r',|\s') \
                            | as_tuple
 
     if not interesting_networks:
         return
 
-    all_container_networks = jsonselect.select('.NetworkSettings .Networks', container)
+    all_container_networks = _jsonselect(container, '.NetworkSettings .Networks')
     if not all_container_networks:
         return
 
@@ -133,12 +133,16 @@ def _handle_container(backend, container):
     _register_container(backend, container_domain, container_networks)
 
 
+def _jsonselect(obj, selector):
+    return jsonselect.select(selector, obj)
+
+
 def _register_container(backend, container_domain, container_networks):
     _logger.w('register container[domain_name=%s] to backend.', container_domain)
 
     namespecs = container_networks \
-                | collect(lambda item: (jsonselect.select('.IPAddress', item),
-                                        jsonselect.select('.GlobalIPv6Address', item),)) \
+                | collect(lambda item: (_jsonselect(item, '.IPAddress'),
+                                        _jsonselect(item, '.GlobalIPv6Address'),)) \
                 | collect(lambda item: NameSpec(host_ipv4=item[0], host_ipv6=item[1])) \
                 | as_list
 

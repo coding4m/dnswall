@@ -183,10 +183,10 @@ class EtcdBackend(Backend):
         """
 
         if not name:
-            return '/'
-
-        keys = [self._url.path] + (name | split(r'\.') | reverse | as_list)
-        return keys | join('/') | replace(r'/+', '/')
+            return [self._url.path] | join('/') | replace(r'/+', '/')
+        else:
+            keys = [self._url.path] + (name | split(r'\.') | reverse | as_list)
+            return keys | join('/') | replace(r'/+', '/')
 
     def _rawname(self, key):
         """
