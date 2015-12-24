@@ -33,10 +33,10 @@ def loop(backend=None,
     # TODO
     _client = docker.AutoVersionClient(base_url=docker_url)
     _logger.w('start and supervise event loop.')
-    supervisor.supervise(min_seconds=2, max_seconds=64)(_event_loop)(backend, _client)
+    supervisor.supervise(min_seconds=2, max_seconds=64)(_loop_events)(backend, _client)
 
 
-def _event_loop(backend, client):
+def _loop_events(backend, client):
     # consume real time events first.
     events = client.events(decode=True, filters={'event': ['start', 'stop', 'pause', 'unpause']})
 
