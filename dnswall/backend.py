@@ -3,15 +3,16 @@ import json
 import urlparse
 
 import etcd
+import jsonselect
 
 from dnswall import loggers
 from dnswall.commons import *
 from dnswall.errors import *
 
-__all__ = ["NameSpec", "NameRecord", "Backend", "EtcdBackend"]
+__all__ = ["NameNode", "NameRecord", "Backend", "EtcdBackend"]
 
 
-class NameSpec(object):
+class NameNode(object):
     """
 
     """
@@ -47,27 +48,27 @@ class NameSpec(object):
 
     @staticmethod
     def from_dict(dict_obj):
-        host_ipv4 = dict_obj.get('host_ipv4', '')
-        host_ipv6 = dict_obj.get('host_ipv6', '')
+        host_ipv4 = jsonselect.select('.host_ipv4', dict_obj)
+        host_ipv6 = jsonselect.select('.host_ipv6', dict_obj)
         if not host_ipv4 and not host_ipv6:
             raise ValueError('host_ipv4 and host_ipv4 both none or empty.')
 
-        return NameSpec(host_ipv4=host_ipv4,
+        return NameNode(host_ipv4=host_ipv4,
                         host_ipv6=host_ipv6)
 
 
 class NameRecord(object):
-    def __init__(self, name=None, ttl=-1, specs=None):
+    def __init__(self, name=None, ttl=-1, nodes=None):
         """
 
         :param name:
-        :param specs:
+        :param nodes:
         :return:
         """
 
         self._name = name
         self._ttl = ttl if ttl else -1
-        self._specs = specs if specs else []
+        self._nodes = nodes if nodes else []
 
     @property
     def name(self):
@@ -78,12 +79,12 @@ class NameRecord(object):
         return self._ttl
 
     @property
-    def specs(self):
-        return self._specs
+    def nodes(self):
+        return self._nodes
 
     def to_dict(self):
         return {"name": self._name, "ttl": self._ttl,
-                "specs": self._specs | collect(lambda spec: spec.to_dict()) | as_list}
+                "nodes": self._nodes | collect(lambda node: node.to_dict()) | as_list}
 
 
 class Backend(object):
@@ -117,11 +118,11 @@ class Backend(object):
         return self._patterns | any(lambda pattern: name.endswith(pattern))
 
     @abc.abstractmethod
-    def register(self, name, namespecs, ttl=None):
+    def register(self, name, nodes, ttl=None):
         """
 
         :param name:
-        :param namespecs:
+        :param nodes:
         :param ttl:
         :return:
         """
@@ -146,10 +147,11 @@ class Backend(object):
         pass
 
     @abc.abstractmethod
-    def lookall(self):
+    def lookall(self, name=None):
         """
 
-        :return: all NameRecords.
+        :param name:
+        :return:
         """
         pass
 
@@ -199,13 +201,13 @@ class EtcdBackend(Backend):
         raw_names = raw_key | split(r'/') | reverse | as_list
         return raw_names[1:-1] | join('.') | replace('\.+', '.')
 
-    def register(self, name, namespecs, ttl=None):
+    def register(self, name, nodes, ttl=None):
         try:
 
-            speclist = namespecs | collect(lambda spec: spec.to_dict()) | as_list
-            self._client.set(self._etcdkey(name), json.dumps(speclist), ttl)
+            nodelist = nodes | collect(lambda node: node.to_dict()) | as_list
+            self._client.set(self._etcdkey(name), json.dumps(nodelist), ttl)
         except:
-            self._logger.ex('register name=%s, specs=%s occurs error.', name, namespecs)
+            self._logger.ex('register name=%s, nodes=%s occurs error.', name, nodes)
             raise BackendError
 
     def unregister(self, name):
@@ -237,10 +239,10 @@ class EtcdBackend(Backend):
             self._logger.ex('lookup name=%s occurs error.', name)
             raise BackendError
 
-    def lookall(self):
+    def lookall(self, name=None):
         try:
 
-            result = self._client.read(self._etcdkey(), recursive=True)
+            result = self._client.read(self._etcdkey(name), recursive=True)
             return self._as_records(result)
         except etcd.EtcdKeyError:
             self._logger.w('lookall occurs etcd key error, just ignore it.')
@@ -249,10 +251,10 @@ class EtcdBackend(Backend):
             self._logger.ex('lookall occurs error.')
             raise BackendError
 
-    def _as_record(self, name, ttl, speclist):
+    def _as_record(self, name, ttl, nodelist):
         return NameRecord(name=name,
                           ttl=ttl,
-                          specs=speclist | collect(lambda spec: NameSpec.from_dict(spec)) | as_list)
+                          nodes=nodelist | collect(lambda node: NameNode.from_dict(node)) | as_list)
 
     def _as_records(self, result):
 
@@ -266,5 +268,5 @@ class EtcdBackend(Backend):
     def _append_records(self, result, records):
 
         if result.value:
-            speclist = json.loads(result.value)
-            records.append(self._as_record(self._rawname(result.key), result.ttl, speclist))
+            nodelist = json.loads(result.value)
+            records.append(self._as_record(self._rawname(result.key), result.ttl, nodelist))

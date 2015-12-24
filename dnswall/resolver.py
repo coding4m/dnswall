@@ -59,22 +59,22 @@ class BackendResolver(object):
                 logger.ex('lookup name record occurs error, just ignore and forward it.')
                 return [], [], []
 
-            if not namerecord.specs:
+            if not namerecord.nodes:
                 return [], [], []
 
             if qt == dns.A:
-                answers = namerecord.specs \
-                          | select(lambda spec: spec.host_ipv4 is not None) \
-                          | collect(lambda spec: dns.Record_A(address=spec.host_ipv4)) \
+                answers = namerecord.nodes \
+                          | select(lambda node: node.host_ipv4 is not None) \
+                          | collect(lambda node: dns.Record_A(address=node.host_ipv4)) \
                           | collect(lambda record_a: dns.RRHeader(name=qn, payload=record_a)) \
                           | as_list
 
                 return answers, [], []
 
             else:
-                answers = namerecord.specs \
-                          | select(lambda spec: spec.host_ipv6 is not None) \
-                          | collect(lambda spec: dns.Record_AAAA(address=spec.host_ipv6)) \
+                answers = namerecord.nodes \
+                          | select(lambda node: node.host_ipv6 is not None) \
+                          | collect(lambda node: dns.Record_AAAA(address=node.host_ipv6)) \
                           | collect(lambda record_aaaa: dns.RRHeader(name=qn, payload=record_aaaa)) \
                           | as_list
 

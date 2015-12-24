@@ -1,53 +1,16 @@
 """
 
 """
-import functools
-import time
 
 import docker
 import jsonselect
 
 from dnswall import loggers
+from dnswall import supervisor
 from dnswall.backend import *
 from dnswall.commons import *
 
 _logger = loggers.get_logger('d.e.Loop')
-
-
-def _supervise(min_seconds=None, max_seconds=None):
-    """
-
-    :param min_seconds:
-    :param max_seconds:
-    :return:
-    """
-
-    def decorator(function):
-        @functools.wraps(function)
-        def wrapped(*args, **kwargs):
-
-            retry_seconds = min_seconds
-            next_retry_seconds = retry_seconds
-
-            while True:
-                try:
-                    return function(*args, **kwargs)
-                except KeyboardInterrupt:
-                    _logger.w('thread interrupted, stop supervise and exit.')
-                    return None
-                except:
-                    _logger.ex('function call occurs error.')
-                    _logger.w('sleep %d seconds and retry again.', retry_seconds)
-
-                    time.sleep(retry_seconds)
-                    next_retry_seconds *= 2
-                    if next_retry_seconds > max_seconds:
-                        next_retry_seconds = min_seconds
-                    retry_seconds = next_retry_seconds
-
-        return wrapped
-
-    return decorator
 
 
 def loop(backend=None,
@@ -70,7 +33,7 @@ def loop(backend=None,
     # TODO
     _client = docker.AutoVersionClient(base_url=docker_url)
     _logger.w('start and supervise event loop.')
-    _supervise(min_seconds=2, max_seconds=64)(_event_loop)(backend, _client)
+    supervisor.supervise(min_seconds=2, max_seconds=64)(_event_loop)(backend, _client)
 
 
 def _event_loop(backend, client):
@@ -144,13 +107,13 @@ def _jsonselect(obj, selector):
 def _register_container(backend, container_domain, container_networks):
     _logger.w('register container[domain_name=%s] to backend.', container_domain)
 
-    namespecs = container_networks \
+    nodes = container_networks \
                 | collect(lambda item: (_jsonselect(item, '.IPAddress'),
                                         _jsonselect(item, '.GlobalIPv6Address'),)) \
-                | collect(lambda item: NameSpec(host_ipv4=item[0], host_ipv6=item[1])) \
+                | collect(lambda item: NameNode(host_ipv4=item[0], host_ipv6=item[1])) \
                 | as_list
 
-    backend.register(container_domain, namespecs)
+    backend.register(container_domain, nodes)
 
 
 def _unregister_container(backend, container_domain):
