@@ -18,14 +18,13 @@ def _get_daemon_args():
                         help='which backend to use.')
 
     parser.add_argument('-docker-url', dest='docker_url', default='unix:///var/run/docker.sock',
-                        help='')
+                        help='docker daemon addr, default is unix:///var/run/docker.sock.')
 
     parser.add_argument('--docker-tlsverify', dest='docker_tls_verify', default=False, action='store_true')
     parser.add_argument('--docker-tlsca', dest='docker_tls_ca')
     parser.add_argument('--docker-tlskey', dest='docker_tls_key')
     parser.add_argument('--docker-tlscert', dest='docker_tls_cert')
-    return parser.parse_args(['-backend', 'etcd://127.0.0.1:4001/dnswall',
-                              '-docker-url', 'tcp://172.16.1.21:2376'])
+    return parser.parse_args()
 
 
 def main():
