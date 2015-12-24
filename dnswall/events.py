@@ -66,6 +66,7 @@ def loop(backend=None,
 
     # TODO
     _client = docker.AutoVersionClient(base_url=docker_url)
+    _logger.w('start and supervise event loop.')
     _supervise(min_seconds=2, max_seconds=64)(_event_loop)(backend, _client)
 
 

@@ -6,6 +6,7 @@ import urlparse
 from twisted.internet import reactor
 from twisted.names import dns, server
 
+from dnswall import loggers
 from dnswall.backend import *
 from dnswall.commons import *
 from dnswall.errors import *
@@ -14,6 +15,8 @@ from dnswall.version import current_version
 
 __ADDRPAIR_LEN = 2
 __BACKENDS = {"etcd": EtcdBackend}
+
+_logger = loggers.get_logger('d.Daemon')
 
 
 def _get_daemon_args():
@@ -58,6 +61,8 @@ def main():
     reactor.listenUDP(dns_port, dns.DNSDatagramProtocol(controller=dns_factory),
                       interface=dns_host)
     reactor.listenTCP(dns_port, dns_factory, interface=dns_host)
+
+    _logger.w('waitting request on [tcp/udp] %s.', dns_addr)
     reactor.run()
 
 
