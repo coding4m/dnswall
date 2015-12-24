@@ -101,9 +101,9 @@ class Backend(object):
         """
 
         backend_url = urlparse.urlparse(backend_options)
-        backend_patterns = urlparse.parse_qs(backend_url.query).get('pattern', [])
         self._url = backend_url
-        self._patterns = backend_patterns
+        self._path = backend_url.path
+        self._patterns = urlparse.parse_qs(backend_url.query).get('pattern', [])
 
     def supports(self, name):
         """
@@ -185,9 +185,9 @@ class EtcdBackend(Backend):
         """
 
         if not name:
-            return [self._url.path] | join('/') | replace(r'/+', '/')
+            return [self._path] | join('/') | replace(r'/+', '/')
         else:
-            keys = [self._url.path] + (name | split(r'\.') | reverse | as_list)
+            keys = [self._path] + (name | split(r'\.') | reverse | as_list)
             return keys | join('/') | replace(r'/+', '/')
 
     def _rawname(self, key):
