@@ -5,13 +5,13 @@ import urlparse
 
 from dnswall import events
 from dnswall.backend import *
-from dnswall.version import current_version
 
 __BACKENDS = {"etcd": EtcdBackend}
 
 
 def _get_callargs():
-    parser = argparse.ArgumentParser(prog='dnswall-agent', description=current_version.desc)
+    parser = argparse.ArgumentParser(prog='dnswall-agent',
+                                     description='monitor agent for docker containers.')
 
     parser.add_argument('-backend', dest='backend', required=True,
                         help='which backend to use.')

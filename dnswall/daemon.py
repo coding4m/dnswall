@@ -11,7 +11,6 @@ from dnswall import loggers
 from dnswall.backend import *
 from dnswall.commons import *
 from dnswall.resolver import *
-from dnswall.version import current_version
 
 __ADDRPAIR_LEN = 2
 __BACKENDS = {"etcd": EtcdBackend}
@@ -20,7 +19,8 @@ _logger = loggers.get_logger('d.Daemon')
 
 
 def _get_callargs():
-    parser = argparse.ArgumentParser(prog='dnswall-daemon', description=current_version.desc)
+    parser = argparse.ArgumentParser(prog='dnswall-daemon',
+                                     description='dns server for docker containers using key-value backends.')
 
     parser.add_argument('-backend', dest='backend', required=True,
                         help='which backend to use.')
