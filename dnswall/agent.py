@@ -23,16 +23,12 @@ def _get_callargs():
     parser.add_argument('--docker-tlsca', dest='docker_tls_ca')
     parser.add_argument('--docker-tlskey', dest='docker_tls_key')
     parser.add_argument('--docker-tlscert', dest='docker_tls_cert')
-    # return parser.parse_args(
-    #     ['-backend', 'etcd://127.0.0.1:4001/dnswall?pattern=workplus.io',
-    #      '-docker-url', 'tcp://172.16.1.21:2376']
-    # )
     return parser.parse_args()
 
 
 def main():
     callargs = _get_callargs()
-    
+
     backend_url = callargs.backend
     backend_scheme = urlparse.urlparse(backend_url).scheme
 
