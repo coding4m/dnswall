@@ -87,6 +87,13 @@ class NameList(object):
         return {"name": self._name,
                 "nodes": self._nodes | collect(lambda node: node.to_dict()) | as_list}
 
+    @staticmethod
+    def from_dict(dict_obj):
+        name = jsonselect.select('.name', dict_obj)
+        nodes = jsonselect.select('.nodes', dict_obj)
+        return NameList(name=name,
+                        nodes=nodes | collect(lambda it: NameNode.from_dict(it)) | as_list)
+
 
 class Backend(object):
     """
@@ -94,17 +101,22 @@ class Backend(object):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, backend_options=None):
+    def __init__(self, backend_options, patterns=None):
         """
 
         :param backend_options:
+        :param patterns:
         :return:
         """
 
         backend_url = urlparse.urlparse(backend_options)
         self._url = backend_url
         self._path = backend_url.path
-        self._patterns = urlparse.parse_qs(backend_url.query).get('pattern', [])
+
+        if patterns:
+            self._patterns = patterns
+        else:
+            self._patterns = urlparse.parse_qs(backend_url.query).get('pattern', [])
 
     def supports(self, name):
         """
@@ -118,6 +130,16 @@ class Backend(object):
 
         return self._patterns | any(lambda pattern: name.endswith(pattern))
 
+    def register_all(self, name, nodes):
+        """
+
+        :param name:
+        :param nodes:
+        :return:
+        """
+        for node in nodes:
+            self.register(name, node)
+
     @abc.abstractmethod
     def register(self, name, node):
         """
@@ -127,6 +149,16 @@ class Backend(object):
         :return:
         """
         pass
+
+    def unregister_all(self, name, nodes):
+        """
+
+        :param name:
+        :param nodes:
+        :return:
+        """
+        for node in nodes:
+            self.unregister(name, node)
 
     @abc.abstractmethod
     def unregister(self, name, node):
@@ -205,6 +237,9 @@ class EtcdBackend(Backend):
         if not name:
             raise BackendValueError('name must not be none or empty.')
 
+        if not node or not node.uuid:
+            raise BackendValueError('node or node.uuid must not be none or empty.')
+
         etcd_key = self._etcdkey(name, node_id=node.uuid)
         try:
             etcd_value = self._etcdvalue(node)
@@ -218,12 +253,15 @@ class EtcdBackend(Backend):
         if not name:
             raise BackendValueError('name must not be none or empty.')
 
+        if not node or not node.uuid:
+            return
+
         etcd_key = self._etcdkey(name, node_id=node.uuid)
         try:
 
             self._client.delete(etcd_key)
         except etcd.EtcdKeyError:
-            self._logger.w('unregister key %s not found, just ignore it', etcd_key)
+            self._logger.d('unregister key %s not found, just ignore it', etcd_key)
         except:
             self._logger.ex('unregister occur error.')
             raise BackendError
@@ -246,7 +284,7 @@ class EtcdBackend(Backend):
 
             return NameList(name=name, nodes=result_nodes)
         except etcd.EtcdKeyError:
-            self._logger.w('key %s not found, just ignore it.', etcd_key)
+            self._logger.d('key %s not found, just ignore it.', etcd_key)
             return NameList(name=name)
         except:
             self._logger.ex('lookup key %s occurs error.', etcd_key)
@@ -260,11 +298,11 @@ class EtcdBackend(Backend):
             etcd_result = self._client.read(etcd_key, recursive=True)
             return self._as_namelists(etcd_result)
         except etcd.EtcdKeyError:
-            self._logger.w('key %s not found, just ignore it.', etcd_key)
+            self._logger.d('key %s not found, just ignore it.', etcd_key)
             return []
         except:
             self._logger.ex('lookall key %s occurs error.', etcd_key)
-        raise BackendError
+            raise BackendError
 
     def _as_namelists(self, result):
 
