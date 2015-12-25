@@ -44,7 +44,7 @@ def _loop_events(backend, client):
     _handle_containers(backend, _get_containers(client))
     for _event in _events:
         # TODO when container destroy, we may lost the opportunity to unregister the container.
-        _container = _get_container(client, jsonselect.select('.id', _event))
+        _container = _get_container(client, _jsonselect(_event, '.id'))
         _handle_container(backend, _container)
 
 
@@ -64,30 +64,36 @@ def _get_container(client, container_id):
 
 
 def _handle_container(backend, container):
-    container_id = _jsonselect(container, '.Id')
-    container_environments = _jsonselect(container, '.Config .Env') \
-                             | collect(lambda env: env | split(r'=', maxsplit=1)) \
-                             | collect(lambda env: env | as_tuple) \
-                             | as_tuple \
-                             | as_dict
+    try:
+        container_environments = _jsonselect(container, '.Config .Env') \
+                                 | collect(lambda env: env | split(r'=', maxsplit=1)) \
+                                 | collect(lambda env: env | as_tuple) \
+                                 | as_tuple \
+                                 | as_dict
 
-    container_domain = _jsonselect(container_environments, '.DOMAIN_NAME')
-    if not container_domain:
-        return
+        container_domain = _jsonselect(container_environments, '.DOMAIN_NAME')
+        if not container_domain:
+            return
 
-    interesting_network = _jsonselect(container_environments, '.DOMAIN_NETWORK')
-    if not interesting_network:
-        return
+        interesting_network = _jsonselect(container_environments, '.DOMAIN_NETWORK')
+        if not interesting_network:
+            return
 
-    container_network = _jsonselect(container, '.NetworkSettings .Networks .{}'.format(interesting_network))
-    if not container_network:
-        return
+        container_network = _jsonselect(container, '.NetworkSettings .Networks .{}'.format(interesting_network))
+        if not container_network:
+            return
 
-    container_status = _jsonselect(container, '.State .Status')
-    if container_status not in ['paused', 'exited']:
-        _register_container(backend, container_id, container_domain, container_network)
-    else:
-        _unregister_container(backend, container_id, container_domain, container_network)
+        container_id = _jsonselect(container, '.Id')
+        container_status = _jsonselect(container, '.State .Status')
+        if container_status not in ['paused', 'exited']:
+            _register_container(backend, container_id, container_domain, container_network)
+        else:
+            _unregister_container(backend, container_id, container_domain, container_network)
+
+    except BackendError as e:
+        raise e
+    except:
+        _logger.ex('handle container occurs error, just ignore it.')
 
 
 def _jsonselect(obj, selector):
