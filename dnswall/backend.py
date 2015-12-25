@@ -236,8 +236,8 @@ class EtcdBackend(Backend):
         etcd_key = self._etcdkey(name)
         try:
 
-            result = self._client.read(etcd_key, recursive=True)
-            result_nodes = result.leaves \
+            etcd_result = self._client.read(etcd_key, recursive=True)
+            result_nodes = etcd_result.leaves \
                            | select(lambda it: it.value) \
                            | collect(lambda it: (self._rawkey(it.key), it.value)) \
                            | select(lambda it: it[0] == name) \
@@ -257,8 +257,8 @@ class EtcdBackend(Backend):
         etcd_key = self._etcdkey(name) if name else self._path
         try:
 
-            result = self._client.read(etcd_key, recursive=True)
-            return self._as_namelists(result)
+            etcd_result = self._client.read(etcd_key, recursive=True)
+            return self._as_namelists(etcd_result)
         except etcd.EtcdKeyError:
             self._logger.w('key %s not found, just ignore it.', etcd_key)
             return []
