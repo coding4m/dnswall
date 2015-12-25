@@ -2,23 +2,7 @@
 
 """
 
-__all__ = ['WallError', 'BackendError', 'BackendNotFound', 'BackendValueError']
-
-
-class WallError(Exception):
-    """
-
-    """
-
-    def __init__(self, errcode=None, errmsg=None):
-        self._errcode = errcode
-        self._errmsg = errmsg
-
-    def __str__(self):
-        pass
-
-    def __repr__(self):
-        pass
+__all__ = ['BackendError', 'BackendNotFound', 'BackendValueError']
 
 
 class BackendError(Exception):
