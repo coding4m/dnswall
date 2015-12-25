@@ -25,8 +25,8 @@ def _get_daemon_args():
     parser.add_argument('-backend', dest='backend', required=True,
                         help='which backend to use.')
 
-    parser.add_argument('-nameservers', dest='nameservers', default='119.29.29.29,114.114.114.114',
-                        help='nameservers used to forward request. default is 119.29.29.29,114.114.114.114')
+    parser.add_argument('-nameservers', dest='nameservers', default='119.29.29.29:53,114.114.114.114:53',
+                        help='nameservers used to forward request. default is 119.29.29.29:53,114.114.114.114:53')
     parser.add_argument('-addr', dest='addr', default='0.0.0.0:53',
                         help='address used to serve dns request. default is 0.0.0.0:53.')
     # return parser.parse_args(
@@ -47,7 +47,8 @@ def main():
 
     backend = backend_cls(backend_options=backend_url)
 
-    dns_servers = daemon_args.nameservers | split(r',|\s')
+    dns_servers = [(it | split(r':')) for it in (daemon_args.nameservers | split(','))]
+    dns_servers = [(it[0], it[1] | as_int) for it in dns_servers] | as_list
     dns_factory = server.DNSServerFactory(
         clients=[BackendResolver(backend=backend), ProxyResovler(servers=dns_servers)]
     )

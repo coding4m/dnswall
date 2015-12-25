@@ -167,8 +167,8 @@ class EtcdBackend(Backend):
     def __init__(self, *args, **kwargs):
         super(EtcdBackend, self).__init__(*args, **kwargs)
 
-        host_pairs = [(addr | split(r':')) for addr in (self._url.netloc | split(','))]
-        host_tuple = [(hostpair[0], int(hostpair[1])) for hostpair in host_pairs] | as_tuple
+        host_pairs = [(it | split(r':')) for it in (self._url.netloc | split(','))]
+        host_tuple = [(it[0], it[1] | as_int) for it in host_pairs] | as_tuple
 
         self._client = etcd.Client(host=host_tuple, allow_reconnect=True)
         self._logger = loggers.get_logger('d.b.EtcdBackend')
