@@ -34,12 +34,12 @@ class BackendResolver(object):
         qtype = query.type
 
         if not self._backend.supports(qname):
-            self._logger.w('unsupported query name [%s], just forward it.', qname)
+            self._logger.d('unsupported query name [%s], just forward it.', qname)
             return defer.fail(dns.DomainError())
 
         # only supports A and AAAA qtype.
         if qtype not in (dns.A, dns.AAAA):
-            self._logger.w('unsupported query type [%d], just forward it.', qtype)
+            self._logger.d('unsupported query type [%d], just forward it.', qtype)
             return defer.fail(dns.DomainError())
 
         def _lookup_backend(backend, logger, qn, qt):
