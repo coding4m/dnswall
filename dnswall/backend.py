@@ -9,7 +9,7 @@ from dnswall import loggers
 from dnswall.commons import *
 from dnswall.errors import *
 
-__all__ = ["NameNode", "NameRecord", "Backend", "EtcdBackend"]
+__all__ = ["NameNode", "NameList", "Backend", "EtcdBackend"]
 
 
 class NameNode(object):
@@ -17,57 +17,62 @@ class NameNode(object):
 
     """
 
-    def __init__(self, host_ipv4=None, host_ipv6=None):
-        """
-
-        :param host_ipv4:
-        :param host_ipv6:
-        :return:
-        """
+    def __init__(self, uuid=None, host_ipv4=None, host_ipv6=None):
+        self._uuid = uuid
         self._host_ipv4 = host_ipv4
         self._host_ipv6 = host_ipv6
 
+    def __eq__(self, other):
+        if self is other:
+            return True
+
+        if not isinstance(other, NameNode):
+            return False
+
+        return self._uuid == other._uuid
+
+    def __ne__(self, other):
+        if self is other:
+            return False
+
+        if not isinstance(other, NameNode):
+            return True
+
+        return self._uuid != other._uuid
+
+    def __hash__(self):
+        return hash(self._uuid)
+
+    @property
+    def uuid(self):
+        return self._uuid
+
     @property
     def host_ipv4(self):
-        """
-
-        :return:
-        """
         return self._host_ipv4
 
     @property
     def host_ipv6(self):
-        """
-
-        :return:
-        """
         return self._host_ipv6
 
     def to_dict(self):
-        return {"host_ipv4": self._host_ipv4, "host_ipv6": self._host_ipv6}
+        return {'uuid': self._uuid,
+                'host_ipv4': self._host_ipv4,
+                'host_ipv6': self._host_ipv6}
 
     @staticmethod
     def from_dict(dict_obj):
+        uuid = jsonselect.select('.uuid', dict_obj)
         host_ipv4 = jsonselect.select('.host_ipv4', dict_obj)
         host_ipv6 = jsonselect.select('.host_ipv6', dict_obj)
-        if not host_ipv4 and not host_ipv6:
-            raise ValueError('host_ipv4 and host_ipv4 both none or empty.')
-
-        return NameNode(host_ipv4=host_ipv4,
+        return NameNode(uuid=uuid,
+                        host_ipv4=host_ipv4,
                         host_ipv6=host_ipv6)
 
 
-class NameRecord(object):
-    def __init__(self, name=None, ttl=-1, nodes=None):
-        """
-
-        :param name:
-        :param nodes:
-        :return:
-        """
-
+class NameList(object):
+    def __init__(self, name=None, nodes=None):
         self._name = name
-        self._ttl = ttl if ttl else -1
         self._nodes = nodes if nodes else []
 
     @property
@@ -75,15 +80,11 @@ class NameRecord(object):
         return self._name
 
     @property
-    def ttl(self):
-        return self._ttl
-
-    @property
     def nodes(self):
         return self._nodes
 
     def to_dict(self):
-        return {"name": self._name, "ttl": self._ttl,
+        return {"name": self._name,
                 "nodes": self._nodes | collect(lambda node: node.to_dict()) | as_list}
 
 
@@ -118,21 +119,21 @@ class Backend(object):
         return self._patterns | any(lambda pattern: name.endswith(pattern))
 
     @abc.abstractmethod
-    def register(self, name, nodes, ttl=None):
+    def register(self, name, node):
         """
 
         :param name:
-        :param nodes:
-        :param ttl:
+        :param node:
         :return:
         """
         pass
 
     @abc.abstractmethod
-    def unregister(self, name):
+    def unregister(self, name, node):
         """
 
-        :param name: domain name.
+        :param name:
+        :param node:
         :return:
         """
         pass
@@ -142,7 +143,7 @@ class Backend(object):
         """
 
         :param name: domain name.
-        :return: a releative NameRecord.
+        :return: a releative NameList.
         """
         pass
 
@@ -161,14 +162,9 @@ class EtcdBackend(Backend):
 
     """
 
+    NODES_SUBPATH = '@nodes'
+
     def __init__(self, *args, **kwargs):
-        """
-
-        :param args:
-        :param kwargs:
-        :return:
-        """
-
         super(EtcdBackend, self).__init__(*args, **kwargs)
 
         host_pairs = [(addr | split(r':')) for addr in (self._url.netloc | split(','))]
@@ -177,96 +173,119 @@ class EtcdBackend(Backend):
         self._client = etcd.Client(host=host_tuple, allow_reconnect=True)
         self._logger = loggers.get_logger('d.b.EtcdBackend')
 
-    def _etcdkey(self, name=None):
-        """
+    def _etcdkey(self, node_name, node_id=None):
 
-        :param name: domain format string, like api.dnswall.io
-        :return: a etcd key format string, /io/dnswall/api
-        """
+        if not node_id:
+            node_id = ''
+
+        keys = [self._path] + \
+               (node_name | split(r'\.') | reverse | as_list) + \
+               [EtcdBackend.NODES_SUBPATH, node_id]
+        return keys | join('/') | replace(r'/+', '/')
+
+    def _rawkey(self, etcd_key):
+
+        node_parts = etcd_key | split(r'/') | reverse | as_list
+        if self._path and not self._path == '/':
+            node_parts = node_parts[:-1]
+
+        return node_parts[1:-1] \
+               | join('.') \
+               | replace('\.+', '.') \
+               | replace('[^.]*\.*{}\.*'.format(EtcdBackend.NODES_SUBPATH), '')
+
+    def _etcdvalue(self, raw_value):
+        return json.dumps(raw_value.to_dict())
+
+    def _rawvalue(self, etcd_value):
+        return NameNode.from_dict(json.loads(etcd_value))
+
+    def register(self, name, node):
 
         if not name:
-            return [self._path] | join('/') | replace(r'/+', '/')
-        else:
-            keys = [self._path] + (name | split(r'\.') | reverse | as_list)
-            return keys | join('/') | replace(r'/+', '/')
+            raise BackendValueError('name must not be none or empty.')
 
-    def _rawname(self, key):
-        """
-
-        :param key: etcd key, like /io/dnswall/api
-        :return: domain format string, like api.dnswall.io
-        """
-
-        raw_key = key if key.endswith('/') else key + '/'
-        raw_names = raw_key | split(r'/') | reverse | as_list
-        return raw_names[1:-1] | join('.') | replace('\.+', '.')
-
-    def register(self, name, nodes, ttl=None):
+        etcd_key = self._etcdkey(name, node_id=node.uuid)
         try:
-
-            nodelist = nodes | collect(lambda node: node.to_dict()) | as_list
-            self._client.set(self._etcdkey(name), json.dumps(nodelist), ttl)
+            etcd_value = self._etcdvalue(node)
+            self._client.set(etcd_key, etcd_value)
         except:
-            self._logger.ex('register name=%s, nodes=%s occurs error.', name, nodes)
+            self._logger.ex('register occur error.')
             raise BackendError
 
-    def unregister(self, name):
+    def unregister(self, name, node):
+
+        if not name:
+            raise BackendValueError('name must not be none or empty.')
+
+        etcd_key = self._etcdkey(name, node_id=node.uuid)
         try:
 
-            self._client.delete(self._etcdkey(name))
+            self._client.delete(etcd_key)
         except etcd.EtcdKeyError:
-            self._logger.w('unregister name=%s occurs etcd key error, just ignore it.', name)
+            self._logger.w('unregister key %s not found, just ignore it', etcd_key)
         except:
-            self._logger.ex('unregister name=%s occurs error.', name)
+            self._logger.ex('unregister occur error.')
             raise BackendError
 
     def lookup(self, name):
 
         if not self.supports(name):
-            raise BackendError("name=%s unsupport.".format(name))
+            raise BackendValueError("unsupport name %s.".format(name))
 
+        etcd_key = self._etcdkey(name)
         try:
 
-            result = self._client.get(self._etcdkey(name))
-            if not result.value:
-                return NameRecord(name=name)
+            result = self._client.read(etcd_key, recursive=True)
+            result_nodes = result.leaves \
+                           | select(lambda it: it.value) \
+                           | collect(lambda it: (self._rawkey(it.key), it.value)) \
+                           | select(lambda it: it[0] == name) \
+                           | collect(lambda it: self._rawvalue(it[1])) \
+                           | as_list
 
-            return self._as_record(name, result.ttl, json.loads(result.value))
+            return NameList(name=name, nodes=result_nodes)
         except etcd.EtcdKeyError:
-            self._logger.w('lookup name=%s occurs etcd key error, just ignore it.', name)
-            return NameRecord(name=name)
+            self._logger.w('key %s not found, just ignore it.', etcd_key)
+            return NameList(name=name)
         except:
-            self._logger.ex('lookup name=%s occurs error.', name)
+            self._logger.ex('lookup key %s occurs error.', etcd_key)
             raise BackendError
 
     def lookall(self, name=None):
+
+        etcd_key = self._etcdkey(name) if name else self._path
         try:
 
-            result = self._client.read(self._etcdkey(name), recursive=True)
-            return self._as_records(result)
+            result = self._client.read(etcd_key, recursive=True)
+            return self._as_namelists(result)
         except etcd.EtcdKeyError:
-            self._logger.w('lookall occurs etcd key error, just ignore it.')
+            self._logger.w('key %s not found, just ignore it.', etcd_key)
             return []
         except:
-            self._logger.ex('lookall occurs error.')
-            raise BackendError
+            self._logger.ex('lookall key %s occurs error.', etcd_key)
+        raise BackendError
 
-    def _as_record(self, name, ttl, nodelist):
-        return NameRecord(name=name,
-                          ttl=ttl,
-                          nodes=nodelist | collect(lambda node: NameNode.from_dict(node)) | as_list)
+    def _as_namelists(self, result):
 
-    def _as_records(self, result):
+        results = {}
+        self._append_namelist(result, results)
 
-        records = []
-        self._append_records(result, records)
+        for child in result.leaves:
+            self._append_namelist(child, results)
 
-        for child in result.children:
-            self._append_records(child, records)
-        return records
+        return results.items() \
+               | collect(lambda it: NameList(name=it[0], nodes=it[1])) \
+               | as_list
 
-    def _append_records(self, result, records):
+    def _append_namelist(self, result, results):
 
-        if result.value:
-            nodelist = json.loads(result.value)
-            records.append(self._as_record(self._rawname(result.key), result.ttl, nodelist))
+        if not result.value:
+            return
+
+        name = self._rawkey(result.key)
+        node = self._rawvalue(result.value)
+        if results.get(name):
+            results[name].append(node)
+        else:
+            results[name] = [node]

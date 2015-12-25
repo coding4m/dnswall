@@ -30,7 +30,7 @@ def _get_daemon_args():
     parser.add_argument('-addr', dest='addr', default='0.0.0.0:53',
                         help='address used to serve dns request. default is 0.0.0.0:53.')
     # return parser.parse_args(
-    #     ['-backend', 'etcd://127.0.0.1:4001/?pattern=workplus.io', '-addr', '0.0.0.0:10053']
+    #     ['-backend', 'etcd://127.0.0.1:4001/dnswall?pattern=workplus.io', '-addr', '0.0.0.0:10053']
     # )
     return parser.parse_args()
 
@@ -57,12 +57,12 @@ def main():
         raise ValueError("addr must like 0.0.0.0:53 format.")
 
     # listen for serve dns request.
-    dns_port, dns_host = (dns_addr[1] | as_int, dns_addr[0],)
+    dns_port, dns_host = dns_addr[1] | as_int, dns_addr[0]
     reactor.listenUDP(dns_port, dns.DNSDatagramProtocol(controller=dns_factory),
                       interface=dns_host)
     reactor.listenTCP(dns_port, dns_factory, interface=dns_host)
 
-    _logger.w('waitting request on [tcp/udp] %s.', dns_addr)
+    _logger.w('waitting request on [tcp/udp] %s.', daemon_args.addr)
     reactor.run()
 
 

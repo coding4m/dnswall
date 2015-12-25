@@ -38,13 +38,14 @@ def loop(backend=None,
 
 def _loop_events(backend, client):
     # consume real time events first.
-    events = client.events(decode=True, filters={'event': ['start', 'stop', 'pause', 'unpause']})
+    _events = client.events(decode=True, filters={'event': ['start', 'stop', 'pause', 'unpause']})
 
     # now loop containers.
     _handle_containers(backend, _get_containers(client))
-    for event in events:
+    for _event in _events:
         # TODO when container destroy, we may lost the opportunity to unregister the container.
-        _handle_container(backend, _get_container(client, jsonselect.select('.id', event)))
+        _container = _get_container(client, jsonselect.select('.id', _event))
+        _handle_container(backend, _container)
 
 
 def _get_containers(client):
@@ -54,8 +55,8 @@ def _get_containers(client):
 
 
 def _handle_containers(backend, containers):
-    for container in containers:
-        _handle_container(backend, container)
+    for _container in containers:
+        _handle_container(backend, _container)
 
 
 def _get_container(client, container_id):
@@ -63,6 +64,7 @@ def _get_container(client, container_id):
 
 
 def _handle_container(backend, container):
+    container_id = _jsonselect(container, '.Id')
     container_environments = _jsonselect(container, '.Config .Env') \
                              | collect(lambda env: env | split(r'=', maxsplit=1)) \
                              | collect(lambda env: env | as_tuple) \
@@ -73,49 +75,40 @@ def _handle_container(backend, container):
     if not container_domain:
         return
 
+    interesting_network = _jsonselect(container_environments, '.DOMAIN_NETWORK')
+    if not interesting_network:
+        return
+
+    container_network = _jsonselect(container, '.NetworkSettings .Networks .{}'.format(interesting_network))
+    if not container_network:
+        return
+
     container_status = _jsonselect(container, '.State .Status')
-    if container_status in ['paused', 'exited']:
-        _unregister_container(backend, container_domain)
-        return
-
-    interesting_networks = _jsonselect(container_environments, '.DOMAIN_NETWORKS') \
-                           | split(pattern=r',|\s') \
-                           | as_tuple
-
-    if not interesting_networks:
-        return
-
-    all_container_networks = _jsonselect(container, '.NetworkSettings .Networks')
-    if not all_container_networks:
-        return
-
-    container_networks = all_container_networks.items() \
-                         | select(lambda item: item[0] in interesting_networks) \
-                         | collect(lambda item: item[1]) \
-                         | as_list
-
-    if not container_networks:
-        return
-
-    _register_container(backend, container_domain, container_networks)
+    if container_status not in ['paused', 'exited']:
+        _register_container(backend, container_id, container_domain, container_network)
+    else:
+        _unregister_container(backend, container_id, container_domain, container_network)
 
 
 def _jsonselect(obj, selector):
     return jsonselect.select(selector, obj)
 
 
-def _register_container(backend, container_domain, container_networks):
-    _logger.w('register container[domain_name=%s] to backend.', container_domain)
+def _register_container(backend, container_id, container_domain, container_network):
+    _logger.w('register container[id=%s, domain_name=%s] to backend.',
+              container_id, container_domain)
 
-    nodes = container_networks \
-                | collect(lambda item: (_jsonselect(item, '.IPAddress'),
-                                        _jsonselect(item, '.GlobalIPv6Address'),)) \
-                | collect(lambda item: NameNode(host_ipv4=item[0], host_ipv6=item[1])) \
-                | as_list
-
-    backend.register(container_domain, nodes)
+    namenode = NameNode(uuid=container_id,
+                        host_ipv4=_jsonselect(container_network, '.IPAddress'),
+                        host_ipv6=_jsonselect(container_network, '.GlobalIPv6Address'))
+    backend.register(container_domain, namenode)
 
 
-def _unregister_container(backend, container_domain):
-    _logger.w('unregister container[domain_name=%s] from backend.', container_domain)
-    backend.unregister(container_domain)
+def _unregister_container(backend, container_id, container_domain, container_network):
+    _logger.w('unregister container[id=%s, domain_name=%s] from backend.',
+              container_id, container_domain)
+
+    namenode = NameNode(uuid=container_id,
+                        host_ipv4=_jsonselect(container_network, '.IPAddress'),
+                        host_ipv6=_jsonselect(container_network, '.GlobalIPv6Address'))
+    backend.unregister(container_domain, namenode)

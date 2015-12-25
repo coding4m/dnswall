@@ -15,7 +15,7 @@ __all__ = [
     'all', 'any', 'avg', 'count', 'max', 'min', 'permutations',
     'netcat', 'netwrite',
     'traverse', 'join', 'split', 'replace',
-    'as_int', 'as_str', 'as_list', 'as_tuple', 'as_dict',
+    'as_int', 'as_str', 'as_list', 'as_set', 'as_tuple', 'as_dict',
     'stdout', 'lineout',
     'tee', 'add', 'first', 'chain', 'collect', 'select', 'take_while',
     'skip_while', 'aggregate', 'groupby', 'sort', 'reverse',
@@ -208,6 +208,11 @@ def as_timestamp(obj):
 @Pipe
 def as_list(iterable):
     return builtins.list(iterable)
+
+
+@Pipe
+def as_set(iterable):
+    return builtins.set(iterable)
 
 
 @Pipe
