@@ -38,8 +38,8 @@ def main():
         sys.exit(1)
 
     backend = backend_cls(backend_url)
-    events.loop(backend=backend,
-                docker_url=callargs.docker_url,
+    events.loop(backend,
+                callargs.docker_url,
                 docker_tls_verify=callargs.docker_tls_verify,
                 docker_tls_ca=callargs.docker_tls_ca,
                 docker_tls_key=callargs.docker_tls_key,

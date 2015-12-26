@@ -13,8 +13,8 @@ from dnswall.commons import *
 _logger = loggers.get_logger('d.e.Loop')
 
 
-def loop(backend=None,
-         docker_url=None,
+def loop(backend,
+         docker_url,
          docker_tls_verify=False,
          docker_tls_ca=None,
          docker_tls_key=None,
@@ -33,10 +33,10 @@ def loop(backend=None,
     # TODO
     _client = docker.AutoVersionClient(base_url=docker_url)
     _logger.w('start and supervise event loop.')
-    supervisor.supervise(min_seconds=2, max_seconds=64)(_loop_events)(backend, _client)
+    supervisor.supervise(min_seconds=2, max_seconds=64)(_event_loop)(backend, _client)
 
 
-def _loop_events(backend, client):
+def _event_loop(backend, client):
     # consume real time events first.
     _events = client.events(decode=True, filters={'event': ['start', 'stop', 'pause', 'unpause']})
 
