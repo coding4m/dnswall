@@ -57,7 +57,7 @@ def main():
         print('ERROR: backend[type={}] not found.'.format(backend_scheme))
         sys.exit(1)
 
-    backend = backend_cls(backend_url, patterns=[''])
+    backend = backend_cls(backend_url)
     callargs.action(backend, callargs)
 
 

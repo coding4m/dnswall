@@ -101,22 +101,17 @@ class Backend(object):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, backend_options, patterns=None):
+    def __init__(self, backend_options):
         """
 
         :param backend_options:
-        :param patterns:
         :return:
         """
 
         backend_url = urlparse.urlparse(backend_options)
         self._url = backend_url
         self._path = backend_url.path
-
-        if patterns:
-            self._patterns = patterns
-        else:
-            self._patterns = urlparse.parse_qs(backend_url.query).get('pattern', [])
+        self._patterns = urlparse.parse_qs(backend_url.query).get('pattern', [])
 
     def supports(self, name):
         """
@@ -127,6 +122,9 @@ class Backend(object):
 
         if not name:
             return False
+
+        if not self._patterns:
+            return True
 
         return self._patterns | any(lambda pattern: name.endswith(pattern))
 
@@ -292,11 +290,14 @@ class EtcdBackend(Backend):
 
     def lookall(self, name=None):
 
+        if name and not self.supports(name):
+            raise BackendValueError("unsupport name %s.".format(name))
+
         etcd_key = self._etcdkey(name) if name else self._path
         try:
 
             etcd_result = self._client.read(etcd_key, recursive=True)
-            return self._as_namelists(etcd_result)
+            return self._to_namelists(etcd_result)
         except etcd.EtcdKeyError:
             self._logger.d('key %s not found, just ignore it.', etcd_key)
             return []
@@ -304,19 +305,19 @@ class EtcdBackend(Backend):
             self._logger.ex('lookall key %s occurs error.', etcd_key)
             raise BackendError
 
-    def _as_namelists(self, result):
+    def _to_namelists(self, result):
 
         results = {}
-        self._append_namelist(result, results)
+        self._collect_namelist(result, results)
 
         for child in result.leaves:
-            self._append_namelist(child, results)
+            self._collect_namelist(child, results)
 
         return results.items() \
                | collect(lambda it: NameList(name=it[0], nodes=it[1])) \
                | as_list
 
-    def _append_namelist(self, result, results):
+    def _collect_namelist(self, result, results):
 
         if not result.value:
             return
