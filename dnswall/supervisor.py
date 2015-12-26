@@ -1,4 +1,5 @@
 import functools
+import threading
 import time
 
 from dnswall import loggers
@@ -21,7 +22,8 @@ def supervise(min_seconds=None, max_seconds=None):
             retry_seconds = min_seconds
             next_retry_seconds = retry_seconds
 
-            while True:
+            current_thread = threading.current_thread()
+            while current_thread.is_alive():
                 try:
                     return function(*args, **kwargs)
                 except KeyboardInterrupt:
