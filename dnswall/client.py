@@ -62,22 +62,22 @@ def main():
 
 
 def _backend_ls(backend, callargs):
-    namelists = backend.lookall(name=callargs.name)
-    dictlists = namelists | collect(lambda it: it.to_dict()) | as_list
-    print json.dumps(dictlists, indent=4, sort_keys=True)
+    name_details = backend.lookall(name=callargs.name)
+    dict_details = name_details | collect(lambda it: it.to_dict()) | as_list
+    print json.dumps(dict_details, indent=4, sort_keys=True)
 
 
 def _backend_rm(backend, callargs):
     try:
-        namelist = _parse_namelist(callargs)
-        backend.unregister_all(namelist.name, namelist.nodes)
+        name_detail = _parse_name_detail(callargs)
+        backend.unregister_all(name_detail.name, name_detail.items)
     except:
         traceback.print_exc()
     else:
         print('OK.')
 
 
-def _parse_namelist(callargs):
+def _parse_name_detail(callargs):
     namejson = ''
 
     with open(callargs.json, 'r') as f:
@@ -87,14 +87,14 @@ def _parse_namelist(callargs):
                 break
             namejson += namedata
 
-    namelist = NameList.from_dict(json.loads(namejson))
-    return namelist
+    name_detail = NameDetail.from_dict(json.loads(namejson))
+    return name_detail
 
 
 def _backend_add(backend, callargs):
     try:
-        namelist = _parse_namelist(callargs)
-        backend.register_all(namelist.name, namelist.nodes)
+        name_detail = _parse_name_detail(callargs)
+        backend.register_all(name_detail.name, name_detail.items)
     except:
         traceback.print_exc()
     else:

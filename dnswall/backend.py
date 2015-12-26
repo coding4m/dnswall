@@ -9,10 +9,10 @@ from dnswall import loggers
 from dnswall.commons import *
 from dnswall.errors import *
 
-__all__ = ["NameNode", "NameList", "Backend", "EtcdBackend"]
+__all__ = ["NameItem", "NameDetail", "Backend", "EtcdBackend"]
 
 
-class NameNode(object):
+class NameItem(object):
     """
 
     """
@@ -26,7 +26,7 @@ class NameNode(object):
         if self is other:
             return True
 
-        if not isinstance(other, NameNode):
+        if not isinstance(other, NameItem):
             return False
 
         return self._uuid == other._uuid
@@ -35,7 +35,7 @@ class NameNode(object):
         if self is other:
             return False
 
-        if not isinstance(other, NameNode):
+        if not isinstance(other, NameItem):
             return True
 
         return self._uuid != other._uuid
@@ -65,34 +65,34 @@ class NameNode(object):
         uuid = jsonselect.select('.uuid', dict_obj)
         host_ipv4 = jsonselect.select('.host_ipv4', dict_obj)
         host_ipv6 = jsonselect.select('.host_ipv6', dict_obj)
-        return NameNode(uuid=uuid,
+        return NameItem(uuid=uuid,
                         host_ipv4=host_ipv4,
                         host_ipv6=host_ipv6)
 
 
-class NameList(object):
-    def __init__(self, name=None, nodes=None):
+class NameDetail(object):
+    def __init__(self, name, items=None):
         self._name = name
-        self._nodes = nodes if nodes else []
+        self._items = items if items else []
 
     @property
     def name(self):
         return self._name
 
     @property
-    def nodes(self):
-        return self._nodes
+    def items(self):
+        return self._items
 
     def to_dict(self):
         return {"name": self._name,
-                "nodes": self._nodes | collect(lambda node: node.to_dict()) | as_list}
+                "items": self._items | collect(lambda it: it.to_dict()) | as_list}
 
     @staticmethod
     def from_dict(dict_obj):
         name = jsonselect.select('.name', dict_obj)
-        nodes = jsonselect.select('.nodes', dict_obj)
-        return NameList(name=name,
-                        nodes=nodes | collect(lambda it: NameNode.from_dict(it)) | as_list)
+        items = jsonselect.select('.items', dict_obj)
+        return NameDetail(name,
+                          items=items | collect(lambda it: NameItem.from_dict(it)) | as_list)
 
 
 class Backend(object):
@@ -128,42 +128,42 @@ class Backend(object):
 
         return self._patterns | any(lambda pattern: name.endswith(pattern))
 
-    def register_all(self, name, nodes):
+    def register_all(self, name, items):
         """
 
         :param name:
-        :param nodes:
+        :param items:
         :return:
         """
-        for node in nodes:
-            self.register(name, node)
+        for item in items:
+            self.register(name, item)
 
     @abc.abstractmethod
-    def register(self, name, node):
+    def register(self, name, item):
         """
 
         :param name:
-        :param node:
+        :param item:
         :return:
         """
         pass
 
-    def unregister_all(self, name, nodes):
+    def unregister_all(self, name, items):
         """
 
         :param name:
-        :param nodes:
+        :param items:
         :return:
         """
-        for node in nodes:
-            self.unregister(name, node)
+        for item in items:
+            self.unregister(name, item)
 
     @abc.abstractmethod
-    def unregister(self, name, node):
+    def unregister(self, name, item):
         """
 
         :param name:
-        :param node:
+        :param item:
         :return:
         """
         pass
@@ -173,7 +173,7 @@ class Backend(object):
         """
 
         :param name: domain name.
-        :return: a releative NameList.
+        :return: a releative NameDetail.
         """
         pass
 
@@ -192,7 +192,7 @@ class EtcdBackend(Backend):
 
     """
 
-    NODES_SUBPATH = '@nodes'
+    NODES_KEY = '@nodes'
 
     def __init__(self, *args, **kwargs):
         super(EtcdBackend, self).__init__(*args, **kwargs)
@@ -203,58 +203,58 @@ class EtcdBackend(Backend):
         self._client = etcd.Client(host=host_tuple, allow_reconnect=True)
         self._logger = loggers.get_logger('d.b.EtcdBackend')
 
-    def _etcdkey(self, node_name, node_id=None):
+    def _etcdkey(self, name, uuid=None):
 
-        if not node_id:
-            node_id = ''
+        if not uuid:
+            uuid = ''
 
-        keys = [self._path] + \
-               (node_name | split(r'\.') | reverse | as_list) + \
-               [EtcdBackend.NODES_SUBPATH, node_id]
-        return keys | join('/') | replace(r'/+', '/')
+        nameparts = name | split(r'\.') | reverse | as_list
+        keyparts = [self._path] + nameparts + [EtcdBackend.NODES_KEY, uuid]
+        return keyparts | join('/') | replace(r'/+', '/')
 
     def _rawkey(self, etcd_key):
 
-        node_parts = etcd_key | split(r'/') | reverse | as_list
+        keyparts = etcd_key | split(r'/') | reverse | as_list
         if self._path and not self._path == '/':
-            node_parts = node_parts[:-1]
+            keyparts = keyparts[:-1]
 
-        return node_parts[1:-1] \
+        keypattern = '[^.]*\.*{}\.*'.format(EtcdBackend.NODES_KEY)
+        return keyparts[1:-1] \
                | join('.') \
                | replace('\.+', '.') \
-               | replace('[^.]*\.*{}\.*'.format(EtcdBackend.NODES_SUBPATH), '')
+               | replace(keypattern, '')
 
     def _etcdvalue(self, raw_value):
         return json.dumps(raw_value.to_dict())
 
     def _rawvalue(self, etcd_value):
-        return NameNode.from_dict(json.loads(etcd_value))
+        return NameItem.from_dict(json.loads(etcd_value))
 
-    def register(self, name, node):
+    def register(self, name, item):
 
         if not name:
             raise BackendValueError('name must not be none or empty.')
 
-        if not node or not node.uuid:
-            raise BackendValueError('node or node.uuid must not be none or empty.')
+        if not item or not item.uuid:
+            raise BackendValueError('item or item.uuid must not be none or empty.')
 
-        etcd_key = self._etcdkey(name, node_id=node.uuid)
+        etcd_key = self._etcdkey(name, uuid=item.uuid)
         try:
-            etcd_value = self._etcdvalue(node)
+            etcd_value = self._etcdvalue(item)
             self._client.set(etcd_key, etcd_value)
         except:
             self._logger.ex('register occur error.')
             raise BackendError
 
-    def unregister(self, name, node):
+    def unregister(self, name, item):
 
         if not name:
-            raise BackendValueError('name must not be none or empty.')
+            raise BackendValueError('item must not be none or empty.')
 
-        if not node or not node.uuid:
+        if not item or not item.uuid:
             return
 
-        etcd_key = self._etcdkey(name, node_id=node.uuid)
+        etcd_key = self._etcdkey(name, uuid=item.uuid)
         try:
 
             self._client.delete(etcd_key)
@@ -267,23 +267,23 @@ class EtcdBackend(Backend):
     def lookup(self, name):
 
         if not self.supports(name):
-            raise BackendValueError("unsupport name %s.".format(name))
+            raise BackendValueError("name %s unsupported.".format(name))
 
         etcd_key = self._etcdkey(name)
         try:
 
             etcd_result = self._client.read(etcd_key, recursive=True)
-            result_nodes = etcd_result.leaves \
+            result_items = etcd_result.leaves \
                            | select(lambda it: it.value) \
                            | collect(lambda it: (self._rawkey(it.key), it.value)) \
                            | select(lambda it: it[0] == name) \
                            | collect(lambda it: self._rawvalue(it[1])) \
                            | as_list
 
-            return NameList(name=name, nodes=result_nodes)
+            return NameDetail(name, items=result_items)
         except etcd.EtcdKeyError:
             self._logger.d('key %s not found, just ignore it.', etcd_key)
-            return NameList(name=name)
+            return NameDetail(name)
         except:
             self._logger.ex('lookup key %s occurs error.', etcd_key)
             raise BackendError
@@ -291,13 +291,13 @@ class EtcdBackend(Backend):
     def lookall(self, name=None):
 
         if name and not self.supports(name):
-            raise BackendValueError("unsupport name %s.".format(name))
+            raise BackendValueError("name %s unsupported.".format(name))
 
         etcd_key = self._etcdkey(name) if name else self._path
         try:
 
             etcd_result = self._client.read(etcd_key, recursive=True)
-            return self._to_namelists(etcd_result)
+            return self._to_name_items(etcd_result)
         except etcd.EtcdKeyError:
             self._logger.d('key %s not found, just ignore it.', etcd_key)
             return []
@@ -305,26 +305,26 @@ class EtcdBackend(Backend):
             self._logger.ex('lookall key %s occurs error.', etcd_key)
             raise BackendError
 
-    def _to_namelists(self, result):
+    def _to_name_items(self, result):
 
         results = {}
-        self._collect_namelist(result, results)
+        self._collect_name_item(result, results)
 
         for child in result.leaves:
-            self._collect_namelist(child, results)
+            self._collect_name_item(child, results)
 
         return results.items() \
-               | collect(lambda it: NameList(name=it[0], nodes=it[1])) \
+               | collect(lambda it: NameDetail(it[0], items=it[1])) \
                | as_list
 
-    def _collect_namelist(self, result, results):
+    def _collect_name_item(self, result, results):
 
         if not result.value:
             return
 
         name = self._rawkey(result.key)
-        node = self._rawvalue(result.value)
+        item = self._rawvalue(result.value)
         if results.get(name):
-            results[name].append(node)
+            results[name].append(item)
         else:
-            results[name] = [node]
+            results[name] = [item]

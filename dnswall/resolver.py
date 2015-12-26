@@ -37,7 +37,6 @@ class BackendResolver(object):
             self._logger.d('unsupported query name [%s], just forward it.', qname)
             return defer.fail(dns.DomainError())
 
-        # only supports A and AAAA qtype.
         if qtype not in (dns.A, dns.AAAA):
             self._logger.d('unsupported query type [%d], just forward it.', qtype)
             return defer.fail(dns.DomainError())
@@ -54,27 +53,27 @@ class BackendResolver(object):
 
             try:
 
-                namelist = backend.lookup(qn)
+                name_detail = backend.lookup(qn)
             except:
                 logger.ex('lookup name %s occurs error, just ignore and forward it.', qn)
                 return [], [], []
 
-            if not namelist.nodes:
+            if not name_detail.items:
                 return [], [], []
 
             if qt == dns.A:
-                answers = namelist.nodes \
-                          | select(lambda node: node.host_ipv4 is not None) \
-                          | collect(lambda node: dns.Record_A(address=node.host_ipv4)) \
+                answers = name_detail.items \
+                          | select(lambda it: it.host_ipv4 is not None) \
+                          | collect(lambda it: dns.Record_A(address=it.host_ipv4)) \
                           | collect(lambda record_a: dns.RRHeader(name=qn, payload=record_a)) \
                           | as_list
 
                 return answers, [], []
 
             else:
-                answers = namelist.nodes \
-                          | select(lambda node: node.host_ipv6 is not None) \
-                          | collect(lambda node: dns.Record_AAAA(address=node.host_ipv6)) \
+                answers = name_detail.items \
+                          | select(lambda it: it.host_ipv6 is not None) \
+                          | collect(lambda it: dns.Record_AAAA(address=it.host_ipv6)) \
                           | collect(lambda record_aaaa: dns.RRHeader(name=qn, payload=record_aaaa)) \
                           | as_list
 
