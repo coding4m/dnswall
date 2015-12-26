@@ -14,7 +14,7 @@ from dnswall.commons import *
 __ADDRPAIR_LEN = 2
 __BACKENDS = {"etcd": EtcdBackend}
 
-_logger = loggers.get_logger('d.Daemon')
+_logger = loggers.get_logger('d.Client')
 
 
 def _get_callargs():
@@ -78,16 +78,16 @@ def _backend_rm(backend, callargs):
 
 
 def _parse_namelist(callargs):
-    namesjson = ''
+    namejson = ''
 
     with open(callargs.json, 'r') as f:
         while True:
-            names_data = f.read(1024)
-            if not names_data:
+            namedata = f.read(1024)
+            if not namedata:
                 break
-            namesjson += names_data
+            namejson += namedata
 
-    namelist = NameList.from_dict(json.loads(namesjson))
+    namelist = NameList.from_dict(json.loads(namejson))
     return namelist
 
 
