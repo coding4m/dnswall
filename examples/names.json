@@ -1,6 +1,6 @@
 {
   "name": "api.workplus.io",
-  "nodes": [
+  "items": [
     {
       "host_ipv4": "127.0.0.1",
       "host_ipv6": "",
