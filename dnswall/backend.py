@@ -297,7 +297,7 @@ class EtcdBackend(Backend):
         try:
 
             etcd_result = self._client.read(etcd_key, recursive=True)
-            return self._to_name_items(etcd_result)
+            return self._to_name_details(etcd_result)
         except etcd.EtcdKeyError:
             self._logger.d('key %s not found, just ignore it.', etcd_key)
             return []
@@ -305,19 +305,19 @@ class EtcdBackend(Backend):
             self._logger.ex('lookall key %s occurs error.', etcd_key)
             raise BackendError
 
-    def _to_name_items(self, result):
+    def _to_name_details(self, result):
 
         results = {}
-        self._collect_name_item(result, results)
+        self._collect_name_details(result, results)
 
         for child in result.leaves:
-            self._collect_name_item(child, results)
+            self._collect_name_details(child, results)
 
         return results.items() \
                | collect(lambda it: NameDetail(it[0], items=it[1])) \
                | as_list
 
-    def _collect_name_item(self, result, results):
+    def _collect_name_details(self, result, results):
 
         if not result.value:
             return
