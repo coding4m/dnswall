@@ -232,8 +232,8 @@ class EtcdBackend(Backend):
 
     def register(self, name, item):
 
-        if not name:
-            raise BackendValueError('name must not be none or empty.')
+        if not self.supports(name):
+            raise BackendValueError('name %s unsupported.'.format(name))
 
         if not item or not item.uuid:
             raise BackendValueError('item or item.uuid must not be none or empty.')
@@ -248,8 +248,8 @@ class EtcdBackend(Backend):
 
     def unregister(self, name, item):
 
-        if not name:
-            raise BackendValueError('item must not be none or empty.')
+        if not self.supports(name):
+            raise BackendValueError('name %s unsupported.'.format(name))
 
         if not item or not item.uuid:
             return
@@ -267,7 +267,7 @@ class EtcdBackend(Backend):
     def lookup(self, name):
 
         if not self.supports(name):
-            raise BackendValueError("name %s unsupported.".format(name))
+            raise BackendValueError('name %s unsupported.'.format(name))
 
         etcd_key = self._etcdkey(name)
         try:
