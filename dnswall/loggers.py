@@ -4,8 +4,7 @@
 
 import logging
 
-logging.basicConfig(
-    format='%(asctime)-15s [%(threadName)s] %(levelname)s %(name)s - %(message)s')
+logging.basicConfig(format='%(asctime)-15s [%(threadName)s] %(levelname)s %(name)s - %(message)s')
 
 _logger_methods = {
     'debug': 'd',
