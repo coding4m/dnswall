@@ -60,9 +60,8 @@ def main():
 
     # listen for serve dns request.
     dns_port, dns_host = dns_addr[1] | as_int, dns_addr[0]
-    reactor.listenUDP(dns_port, dns.DNSDatagramProtocol(controller=dns_factory),
-                      interface=dns_host)
     reactor.listenTCP(dns_port, dns_factory, interface=dns_host)
+    reactor.listenUDP(dns_port, dns.DNSDatagramProtocol(controller=dns_factory), interface=dns_host)
 
     _logger.w('waitting request on [tcp/udp] %s.', callargs.addr)
     reactor.run()
