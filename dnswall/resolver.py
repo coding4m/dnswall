@@ -7,6 +7,8 @@ from dnswall.commons import *
 
 __all__ = ["BackendResolver", "ProxyResovler"]
 
+EMPTY_ANSWERS = [], [], []
+
 
 class BackendResolver(object):
     """
@@ -56,10 +58,10 @@ class BackendResolver(object):
                 name_detail = backend.lookup(qn)
             except:
                 logger.ex('lookup name %s occurs error, just ignore and forward it.', qn)
-                return [], [], []
+                return EMPTY_ANSWERS
 
             if not name_detail.items:
-                return [], [], []
+                return EMPTY_ANSWERS
 
             if qt == dns.A:
                 answers = name_detail.items \
