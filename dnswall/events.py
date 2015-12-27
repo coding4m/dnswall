@@ -104,17 +104,17 @@ def _register_container(backend, container_id, container_domain, container_netwo
     _logger.w('register container[id=%s, domain_name=%s] to backend.',
               container_id, container_domain)
 
-    namenode = NameItem(uuid=container_id,
-                        host_ipv4=_jsonselect(container_network, '.IPAddress'),
-                        host_ipv6=_jsonselect(container_network, '.GlobalIPv6Address'))
-    backend.register(container_domain, namenode)
+    name_item = NameItem(uuid=container_id,
+                         host_ipv4=_jsonselect(container_network, '.IPAddress'),
+                         host_ipv6=_jsonselect(container_network, '.GlobalIPv6Address'))
+    backend.register(container_domain, name_item)
 
 
 def _unregister_container(backend, container_id, container_domain, container_network):
     _logger.w('unregister container[id=%s, domain_name=%s] from backend.',
               container_id, container_domain)
 
-    namenode = NameItem(uuid=container_id,
-                        host_ipv4=_jsonselect(container_network, '.IPAddress'),
-                        host_ipv6=_jsonselect(container_network, '.GlobalIPv6Address'))
-    backend.unregister(container_domain, namenode)
+    name_item = NameItem(uuid=container_id,
+                         host_ipv4=_jsonselect(container_network, '.IPAddress'),
+                         host_ipv6=_jsonselect(container_network, '.GlobalIPv6Address'))
+    backend.unregister(container_domain, name_item)
