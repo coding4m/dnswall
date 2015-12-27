@@ -50,8 +50,8 @@ def _event_loop(backend, client):
 
 def _get_containers(client):
     return client.containers(quiet=True, all=True) \
-           | collect(lambda container: _jsonselect(container, '.Id')) \
-           | collect(lambda container_id: _get_container(client, container_id))
+           | collect(lambda it: _jsonselect(it, '.Id')) \
+           | collect(lambda it: _get_container(client, it))
 
 
 def _handle_containers(backend, containers):
@@ -66,8 +66,8 @@ def _get_container(client, container_id):
 def _handle_container(backend, container):
     try:
         container_environments = _jsonselect(container, '.Config .Env') \
-                                 | collect(lambda env: env | split(r'=', maxsplit=1)) \
-                                 | collect(lambda env: env | as_tuple) \
+                                 | collect(lambda it: it | split(r'=', maxsplit=1)) \
+                                 | collect(lambda it: it | as_tuple) \
                                  | as_tuple \
                                  | as_dict
 
