@@ -232,11 +232,8 @@ class EtcdBackend(Backend):
 
     def register(self, name, item):
 
-        if not self.supports(name):
-            raise BackendValueError('name %s unsupported.'.format(name))
-
-        if not item or not item.uuid:
-            raise BackendValueError('item or item.uuid must not be none or empty.')
+        self._check_name(name)
+        self._check_item(item)
 
         etcd_key = self._etcdkey(name, uuid=item.uuid)
         try:
@@ -246,13 +243,18 @@ class EtcdBackend(Backend):
             self._logger.ex('register occur error.')
             raise BackendError
 
-    def unregister(self, name, item):
-
+    def _check_name(self, name):
         if not self.supports(name):
             raise BackendValueError('name %s unsupported.'.format(name))
 
+    def _check_item(self, item):
         if not item or not item.uuid:
-            return
+            raise BackendValueError('item or item.uuid must not be none or empty.')
+
+    def unregister(self, name, item):
+
+        self._check_name(name)
+        self._check_item(item)
 
         etcd_key = self._etcdkey(name, uuid=item.uuid)
         try:
@@ -266,9 +268,7 @@ class EtcdBackend(Backend):
 
     def lookup(self, name):
 
-        if not self.supports(name):
-            raise BackendValueError('name %s unsupported.'.format(name))
-
+        self._check_name(name)
         etcd_key = self._etcdkey(name)
         try:
 
@@ -290,8 +290,8 @@ class EtcdBackend(Backend):
 
     def lookall(self, name=None):
 
-        if name and not self.supports(name):
-            raise BackendValueError("name %s unsupported.".format(name))
+        if name:
+            self._check_name(name)
 
         etcd_key = self._etcdkey(name) if name else self._path
         try:
