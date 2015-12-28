@@ -245,7 +245,7 @@ class EtcdBackend(Backend):
 
     def _check_name(self, name):
         if not self.supports(name):
-            raise BackendValueError('name %s unsupported.'.format(name))
+            raise BackendValueError('name {} unsupported.'.format(name))
 
     def _check_item(self, item):
         if not item or not item.uuid:
@@ -324,6 +324,10 @@ class EtcdBackend(Backend):
 
         name = self._rawkey(result.key)
         item = self._rawvalue(result.value)
+
+        if not self.supports(name):
+            return
+
         if results.get(name):
             results[name].append(item)
         else:
