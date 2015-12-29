@@ -2,6 +2,7 @@
 
 import argparse
 import urlparse
+import sys
 
 from dnswall import events
 from dnswall.backend import *

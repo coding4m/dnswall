@@ -92,7 +92,7 @@ def _handle_container(backend, container):
             _unregister_container(backend, container_id, container_domain, container_network)
 
     except BackendValueError:
-        _logger.ex('handle container occurs BackendValueError, just ignore it.')
+        _logger.w('handle container occurs BackendValueError, just ignore it.')
     except BackendError as e:
         raise e
     except:
