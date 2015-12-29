@@ -7,5 +7,5 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	&& rm -rf /var/lib/apt/lists/*
 
 ADD . /var/dnswall/
-RUN cd /var/dnswall/ && python setup.py install
-ENTRYPOINT ["/usr/local/bin/dnswall-cli"]
+RUN cd /var/dnswall/ && python setup.py install && apt-get uninstall gcc python-dev -y
+ENTRYPOINT ["/usr/local/bin/dnswall-client"]
