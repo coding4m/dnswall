@@ -4,7 +4,7 @@ import time
 
 from dnswall import loggers
 
-_logger = loggers.get_logger('d.s.supervise')
+_logger = loggers.getlogger('d.s.supervise')
 
 
 def supervise(min_seconds=None, max_seconds=None):

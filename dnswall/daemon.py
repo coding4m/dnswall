@@ -15,7 +15,7 @@ from dnswall.resolver import *
 __ADDRPAIR_LEN = 2
 __BACKENDS = {"etcd": EtcdBackend}
 
-_logger = loggers.get_logger('d.Daemon')
+_logger = loggers.getlogger('d.Daemon')
 
 
 def _get_callargs():
@@ -42,7 +42,7 @@ def main():
 
     backend_cls = __BACKENDS.get(backend_scheme)
     if not backend_cls:
-        print('ERROR: backend[type={}] not found.'.format(backend_scheme))
+        _logger.e('backend[type=%s] not found, daemon exit.', backend_scheme)
         sys.exit(1)
 
     backend = backend_cls(backend_url)
@@ -55,7 +55,7 @@ def main():
 
     dns_addr = callargs.addr | split(r':')
     if len(dns_addr) != __ADDRPAIR_LEN:
-        print('ERROR: addr must like 0.0.0.0:53 format.')
+        _logger.e('addr must like 0.0.0.0:53 format, daemon exit.')
         sys.exit(1)
 
     # listen for serve dns request.

@@ -9,8 +9,9 @@ from dnswall import loggers
 from dnswall import supervisor
 from dnswall.backend import *
 from dnswall.commons import *
+from dnswall.errors import *
 
-_logger = loggers.get_logger('d.e.Loop')
+_logger = loggers.getlogger('d.e.Loop')
 
 
 def loop(backend,
@@ -90,6 +91,8 @@ def _handle_container(backend, container):
         else:
             _unregister_container(backend, container_id, container_domain, container_network)
 
+    except BackendValueError:
+        _logger.ex('handle container occurs BackendValueError, just ignore it.')
     except BackendError as e:
         raise e
     except:

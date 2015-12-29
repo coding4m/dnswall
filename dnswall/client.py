@@ -14,7 +14,7 @@ from dnswall.commons import *
 __ADDRPAIR_LEN = 2
 __BACKENDS = {"etcd": EtcdBackend}
 
-_logger = loggers.get_logger('d.Client')
+_logger = loggers.getlogger('d.Client')
 
 
 def _get_callargs():

@@ -22,7 +22,7 @@ class BackendResolver(object):
         :return:
         """
         self._backend = backend
-        self._logger = loggers.get_logger('d.r.BackendResolver')
+        self._logger = loggers.getlogger('d.r.BackendResolver')
 
     def query(self, query, timeout=None):
         """
