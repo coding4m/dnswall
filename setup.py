@@ -18,7 +18,7 @@ setup(
         'console_scripts': [
             'dnswall-daemon = dnswall.daemon:main',
             'dnswall-agent = dnswall.agent:main',
-            'dnswall-cli = dnswall.client:main'
+            'dnswall-client = dnswall.client:main'
         ]
     }
 
