@@ -6,5 +6,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 		python-dev \
 	&& rm -rf /var/lib/apt/lists/*
 
-ONBUILD ADD . /var/dnswall/
-ONBUILD RUN cd /var/dnswall/ && python setup.py install
+ADD . /var/dnswall/
+RUN cd /var/dnswall/ && python setup.py install
+ENTRYPOINT ['dnswall-cli']
