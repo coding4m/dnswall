@@ -101,7 +101,7 @@ class Backend(object):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, backend_options):
+    def __init__(self, backend_options, patterns=None):
         """
 
         :param backend_options:
@@ -111,7 +111,7 @@ class Backend(object):
         backend_url = urlparse.urlparse(backend_options)
         self._url = backend_url
         self._path = backend_url.path
-        self._patterns = urlparse.parse_qs(backend_url.query).get('pattern', [])
+        self._patterns = patterns if patterns else []
 
     def supports(self, name):
         """

@@ -28,6 +28,9 @@ def _get_callargs():
     parser.add_argument('--addr', dest='addr', default='0.0.0.0:53',
                         help='address used to serve dns request. default is 0.0.0.0:53.')
 
+    parser.add_argument('--patterns', dest='patterns', default='dnswall.local',
+                        help='patterns of domain name handle by backend.')
+
     parser.add_argument('--servers', dest='servers', default='119.29.29.29:53,114.114.114.114:53',
                         help='nameservers used to forward request. default is 119.29.29.29:53,114.114.114.114:53')
 
@@ -37,6 +40,11 @@ def _get_callargs():
 def main():
     callargs = _get_callargs()
 
+    patterns = callargs.patterns | split('[,;\s]')
+    if not patterns:
+        _logger.e('patterns must not be empty, daemon exit.')
+        sys.exit(1)
+
     backend_url = callargs.backend
     backend_scheme = urlparse.urlparse(backend_url).scheme
 
@@ -45,15 +53,14 @@ def main():
         _logger.e('backend[type=%s] not found, daemon exit.', backend_scheme)
         sys.exit(1)
 
-    backend = backend_cls(backend_url)
-
-    dns_servers = [(it | split(r':')) for it in (callargs.servers | split(','))]
+    backend = backend_cls(backend_url, patterns=patterns)
+    dns_servers = [(it | split(':')) for it in (callargs.servers | split(','))]
     dns_servers = [(it[0], it[1] | as_int) for it in dns_servers] | as_list
     dns_factory = server.DNSServerFactory(
         clients=[BackendResolver(backend=backend), ProxyResovler(servers=dns_servers)]
     )
 
-    dns_addr = callargs.addr | split(r':')
+    dns_addr = callargs.addr | split(':')
     if len(dns_addr) != __ADDRPAIR_LEN:
         _logger.e('addr must like 0.0.0.0:53 format, daemon exit.')
         sys.exit(1)
