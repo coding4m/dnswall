@@ -7,4 +7,4 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	&& rm -rf /var/lib/apt/lists/*
 
 ONBUILD ADD . /var/dnswall/
-ONBUILD cd /var/dnswall/ && python setup.py install
+ONBUILD RUN cd /var/dnswall/ && python setup.py install
