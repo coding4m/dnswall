@@ -1,10 +1,8 @@
 import abc
 import json
 import urlparse
-
 import etcd
 import jsonselect
-
 from dnswall import loggers
 from dnswall.commons import *
 from dnswall.errors import *
@@ -192,7 +190,7 @@ class EtcdBackend(Backend):
 
     """
 
-    NODES_KEY = '@nodes'
+    NODES_KEY = '@name-items'
 
     def __init__(self, *args, **kwargs):
         super(EtcdBackend, self).__init__(*args, **kwargs)
