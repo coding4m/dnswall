@@ -1,13 +1,16 @@
 #!/usr/bin/env python
 
 import argparse
-import urlparse
 import sys
+import urlparse
 
 from dnswall import events
+from dnswall import loggers
 from dnswall.backend import *
 
 __BACKENDS = {"etcd": EtcdBackend}
+
+_logger = loggers.getlogger('d.Agent')
 
 
 def _get_callargs():
@@ -35,7 +38,7 @@ def main():
 
     backend_cls = __BACKENDS.get(backend_scheme)
     if not backend_cls:
-        print('ERROR: backend[type={}] not found.'.format(backend_scheme))
+        _logger.e('backend[type=%s] not found, agent exit.', backend_scheme)
         sys.exit(1)
 
     backend = backend_cls(backend_url)
