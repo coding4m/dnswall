@@ -190,7 +190,7 @@ class EtcdBackend(Backend):
 
     """
 
-    NODES_KEY = '@name-items'
+    NODES_KEY = '@items'
 
     def __init__(self, *args, **kwargs):
         super(EtcdBackend, self).__init__(*args, **kwargs)
