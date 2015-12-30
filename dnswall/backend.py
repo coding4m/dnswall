@@ -1,8 +1,10 @@
 import abc
 import json
 import urlparse
+
 import etcd
 import jsonselect
+
 from dnswall import loggers
 from dnswall.commons import *
 from dnswall.errors import *
@@ -27,7 +29,8 @@ class NameItem(object):
         if not isinstance(other, NameItem):
             return False
 
-        return self._uuid == other._uuid
+        return (self._host_ipv4, self._host_ipv6,) == \
+               (other._host_ipv4, other._host_ipv6,)
 
     def __ne__(self, other):
         if self is other:
@@ -36,10 +39,11 @@ class NameItem(object):
         if not isinstance(other, NameItem):
             return True
 
-        return self._uuid != other._uuid
+        return (self._host_ipv4, self._host_ipv6,) != \
+               (other._host_ipv4, other._host_ipv6,)
 
     def __hash__(self):
-        return hash(self._uuid)
+        return hash((self._host_ipv4, self._host_ipv6,))
 
     @property
     def uuid(self):
@@ -71,7 +75,7 @@ class NameItem(object):
 class NameDetail(object):
     def __init__(self, name, items=None):
         self._name = name
-        self._items = items if items else []
+        self._items = (items | as_set | as_list) if items else []
 
     @property
     def name(self):

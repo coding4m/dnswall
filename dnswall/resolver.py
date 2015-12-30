@@ -66,7 +66,9 @@ class BackendResolver(object):
             if qt == dns.A:
                 answers = name_detail.items \
                           | select(lambda it: it.host_ipv4 is not None) \
-                          | collect(lambda it: dns.Record_A(address=it.host_ipv4)) \
+                          | collect(lambda it: it.host_ipv4) \
+                          | as_set \
+                          | collect(lambda it: dns.Record_A(address=it)) \
                           | collect(lambda record_a: dns.RRHeader(name=qn, payload=record_a)) \
                           | as_list
 
@@ -75,7 +77,9 @@ class BackendResolver(object):
             else:
                 answers = name_detail.items \
                           | select(lambda it: it.host_ipv6 is not None) \
-                          | collect(lambda it: dns.Record_AAAA(address=it.host_ipv6)) \
+                          | collect(lambda it: it.host_ipv6) \
+                          | as_set \
+                          | collect(lambda it: dns.Record_AAAA(address=it)) \
                           | collect(lambda record_aaaa: dns.RRHeader(name=qn, payload=record_aaaa)) \
                           | as_list
 
