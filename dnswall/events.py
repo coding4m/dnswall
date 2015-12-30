@@ -66,7 +66,12 @@ def _get_container(client, container_id):
 
 def _handle_container(backend, container):
     try:
-        container_environments = _jsonselect(container, '.Config .Env') \
+
+        container_environments = _jsonselect(container, '.Config .Env')
+        if not container_environments:
+            return
+
+        container_environments = container_environments \
                                  | collect(lambda it: it | split(r'=', maxsplit=1)) \
                                  | collect(lambda it: it | as_tuple) \
                                  | as_tuple \
@@ -80,7 +85,8 @@ def _handle_container(backend, container):
         if not interesting_network:
             return
 
-        container_network = _jsonselect(container, '.NetworkSettings .Networks .{}'.format(interesting_network))
+        container_network_path = '.NetworkSettings .Networks .{}'.format(interesting_network)
+        container_network = _jsonselect(container, container_network_path)
         if not container_network:
             return
 
