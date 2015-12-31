@@ -7,6 +7,7 @@ import sys
 import traceback
 import urlparse
 
+from dnswall import constants
 from dnswall import loggers
 from dnswall.backend import *
 from dnswall.commons import *
@@ -22,7 +23,7 @@ def _get_callargs():
                                      epilog='''Run 'dnswall-client COMMAND -h' for more information on a command.''',
                                      description='dnswall client for names operations.')
 
-    parser.add_argument('-backend', dest='backend',
+    parser.add_argument('-backend', dest='backend', default=os.getenv(constants.BACKEND_ENV),
                         help='which backend to use. if not set, use BACKEND env instead.')
 
     subparsers = parser.add_subparsers(help='avaliables commands.')
@@ -47,14 +48,14 @@ def main():
 
     backend_url = callargs.backend if callargs.backend else os.getenv('BACKEND')
     if not backend_url:
-        print('ERROR: BACKEND env not set, use -backend BACKEND instead.')
+        _logger.e('%s env not set, use -backend BACKEND instead, client exit.', constants.BACKEND_ENV)
         sys.exit(1)
 
     backend_scheme = urlparse.urlparse(backend_url).scheme
 
     backend_cls = __BACKENDS.get(backend_scheme)
     if not backend_cls:
-        print('ERROR: backend[type={}] not found.'.format(backend_scheme))
+        _logger.e('backend[type=%s] not found. client exit', backend_scheme)
         sys.exit(1)
 
     backend = backend_cls(backend_url)

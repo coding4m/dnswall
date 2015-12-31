@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 
 import argparse
+import os
 import sys
 import urlparse
 
 from twisted.internet import reactor
 from twisted.names import dns, server
 
+from dnswall import constants
 from dnswall import loggers
 from dnswall.backend import *
 from dnswall.commons import *
@@ -22,16 +24,20 @@ def _get_callargs():
     parser = argparse.ArgumentParser(prog='dnswall-daemon',
                                      description='dns server for docker containers using key-value backends.')
 
-    parser.add_argument('-backend', dest='backend', required=True,
+    parser.add_argument('-backend', dest='backend',
+                        default=os.getenv(constants.BACKEND_ENV),
                         help='which backend to use.')
 
-    parser.add_argument('--addr', dest='addr', default='0.0.0.0:53',
+    parser.add_argument('--addr', dest='addr',
+                        default=os.getenv(constants.ADDR_ENV, '0.0.0.0:53'),
                         help='address used to serve dns request. default is 0.0.0.0:53.')
 
-    parser.add_argument('--patterns', dest='patterns', default='dnswall.local',
+    parser.add_argument('--patterns', dest='patterns',
+                        default=os.getenv(constants.PATTERNS_ENV, 'dnswall.local'),
                         help='patterns of domain name handle by backend.')
 
-    parser.add_argument('--servers', dest='servers', default='119.29.29.29:53,114.114.114.114:53',
+    parser.add_argument('--servers', dest='servers',
+                        default=os.getenv(constants.SERVERS_ENV, '119.29.29.29:53,114.114.114.114:53'),
                         help='nameservers used to forward request. default is 119.29.29.29:53,114.114.114.114:53')
 
     return parser.parse_args()
@@ -46,8 +52,11 @@ def main():
         sys.exit(1)
 
     backend_url = callargs.backend
-    backend_scheme = urlparse.urlparse(backend_url).scheme
+    if not backend_url:
+        _logger.e('%s env not set, use -backend instead, daemon exit.', constants.BACKEND_ENV)
+        sys.exit(1)
 
+    backend_scheme = urlparse.urlparse(backend_url).scheme
     backend_cls = __BACKENDS.get(backend_scheme)
     if not backend_cls:
         _logger.e('backend[type=%s] not found, daemon exit.', backend_scheme)
