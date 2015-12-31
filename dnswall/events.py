@@ -81,6 +81,11 @@ def _handle_container(backend, container):
         if not container_domain:
             return
 
+        container_id = _jsonselect(container, '.Id')
+        container_status = _jsonselect(container, '.State .Status')
+        if container_status in ['paused', 'exited']:
+            _unregister_container(backend, container_id, container_domain, {})
+
         interesting_network = _jsonselect(container_environments, '.DOMAIN_NETWORK')
         if not interesting_network:
             return
@@ -90,12 +95,7 @@ def _handle_container(backend, container):
         if not container_network:
             return
 
-        container_id = _jsonselect(container, '.Id')
-        container_status = _jsonselect(container, '.State .Status')
-        if container_status not in ['paused', 'exited']:
-            _register_container(backend, container_id, container_domain, container_network)
-        else:
-            _unregister_container(backend, container_id, container_domain, container_network)
+        _register_container(backend, container_id, container_domain, container_network)
 
     except BackendValueError:
         _logger.w('handle container occurs BackendValueError, just ignore it.')
