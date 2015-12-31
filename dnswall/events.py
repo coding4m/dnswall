@@ -81,11 +81,6 @@ def _handle_container(backend, container):
         if not container_domain:
             return
 
-        container_id = _jsonselect(container, '.Id')
-        container_status = _jsonselect(container, '.State .Status')
-        if container_status in ['paused', 'exited']:
-            _unregister_container(backend, container_id, container_domain, {})
-
         interesting_network = _jsonselect(container_environments, '.DOMAIN_NETWORK')
         if not interesting_network:
             return
@@ -95,7 +90,12 @@ def _handle_container(backend, container):
         if not container_network:
             return
 
-        _register_container(backend, container_id, container_domain, container_network)
+        container_id = _jsonselect(container, '.Id')
+        container_status = _jsonselect(container, '.State .Status')
+        if container_status not in ['paused', 'exited']:
+            _register_container(backend, container_id, container_domain, container_network)
+        else:
+            _unregister_container(backend, container_id, container_domain, container_network)
 
     except BackendValueError:
         _logger.w('handle container occurs BackendValueError, just ignore it.')
@@ -113,17 +113,17 @@ def _register_container(backend, container_id, container_domain, container_netwo
     _logger.w('register container[id=%s, domain_name=%s] to backend.',
               container_id, container_domain)
 
-    name_item = NameItem(uuid=container_id,
-                         host_ipv4=_jsonselect(container_network, '.IPAddress'),
-                         host_ipv6=_jsonselect(container_network, '.GlobalIPv6Address'))
-    backend.register(container_domain, name_item)
+    item = NameItem(uuid=container_id,
+                    host_ipv4=_jsonselect(container_network, '.IPAddress'),
+                    host_ipv6=_jsonselect(container_network, '.GlobalIPv6Address'))
+    backend.register(container_domain, item)
 
 
 def _unregister_container(backend, container_id, container_domain, container_network):
     _logger.w('unregister container[id=%s, domain_name=%s] from backend.',
               container_id, container_domain)
 
-    name_item = NameItem(uuid=container_id,
-                         host_ipv4=_jsonselect(container_network, '.IPAddress'),
-                         host_ipv6=_jsonselect(container_network, '.GlobalIPv6Address'))
-    backend.unregister(container_domain, name_item)
+    item = NameItem(uuid=container_id,
+                    host_ipv4=_jsonselect(container_network, '.IPAddress'),
+                    host_ipv6=_jsonselect(container_network, '.GlobalIPv6Address'))
+    backend.unregister(container_domain, item)
