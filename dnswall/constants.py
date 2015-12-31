@@ -4,14 +4,17 @@
 import sys
 
 
-class ConstantError(TypeError):
-    pass
-
-
 class _Constants(object):
+    """
+
+    """
+
+    class ConstantError(TypeError):
+        pass
+
     def __setattr__(self, name, value):
         if self.__dict__.has_key(name):
-            raise ConstantError("Can't rebind constant (%s)" % name)
+            raise self.ConstantError("Can't rebind constant (%s)" % name)
 
         self.__dict__[name] = value
 
