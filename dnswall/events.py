@@ -39,7 +39,7 @@ def loop(backend,
 
 def _event_loop(backend, client):
     # consume real time events first.
-    _events = client.events(decode=True, filters={'event': ['start', 'stop', 'pause', 'unpause']})
+    _events = client.events(decode=True, filters={'event': ['destroy', 'die', 'start', 'stop', 'pause', 'unpause']})
 
     # now loop containers.
     _handle_containers(backend, _get_containers(client))
@@ -67,6 +67,15 @@ def _get_container(client, container_id):
 def _handle_container(backend, container):
     try:
 
+        container_id = _jsonselect(container, '.Id')
+        container_status = _jsonselect(container, '.State .Status')
+
+        # ignore tty container.
+        is_tty_container = _jsonselect(container, '.Config .Tty')
+        if is_tty_container:
+            _logger.w('ignore tty container[id=%s]', container_id)
+            return
+
         container_environments = _jsonselect(container, '.Config .Env')
         if not container_environments:
             return
@@ -90,8 +99,6 @@ def _handle_container(backend, container):
         if not container_network:
             return
 
-        container_id = _jsonselect(container, '.Id')
-        container_status = _jsonselect(container, '.State .Status')
         if container_status not in ['paused', 'exited']:
             _register_container(backend, container_id, container_domain, container_network)
         else:
