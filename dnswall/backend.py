@@ -207,7 +207,7 @@ class EtcdBackend(Backend):
                | replace(keypattern, '')
 
     def _etcdvalue(self, raw_value):
-        return json.dumps(raw_value.to_dict())
+        return json.dumps(raw_value.to_dict(), sort_keys=True)
 
     def _rawvalue(self, etcd_value):
         return NameItem.from_dict(json.loads(etcd_value))
