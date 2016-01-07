@@ -272,7 +272,7 @@ class EtcdBackend(Backend):
 
     def lookall(self):
 
-        etcd_key = self._etcdkey(self._path)
+        etcd_key = self._path
         try:
 
             etcd_result = self._client.read(etcd_key, recursive=True)
