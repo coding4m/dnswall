@@ -8,4 +8,3 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 ADD . /var/dnswall/
 RUN cd /var/dnswall/ && python setup.py install && apt-get autoremove -y gcc python-dev
-ENTRYPOINT ["/usr/local/bin/dnswall-client"]

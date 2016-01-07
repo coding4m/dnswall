@@ -130,35 +130,16 @@ class Backend(object):
 
         return self._patterns | any(lambda pattern: name.endswith(pattern))
 
-    def register_all(self, name, items):
-        """
-
-        :param name:
-        :param items:
-        :return:
-        """
-        for item in items:
-            self.register(name, item)
-
     @abc.abstractmethod
-    def register(self, name, item):
+    def register(self, name, item, ttl=None):
         """
 
         :param name:
         :param item:
+        :param ttl:
         :return:
         """
         pass
-
-    def unregister_all(self, name, items):
-        """
-
-        :param name:
-        :param items:
-        :return:
-        """
-        for item in items:
-            self.unregister(name, item)
 
     @abc.abstractmethod
     def unregister(self, name, item):
@@ -180,10 +161,9 @@ class Backend(object):
         pass
 
     @abc.abstractmethod
-    def lookall(self, name=None):
+    def lookall(self):
         """
 
-        :param name:
         :return:
         """
         pass
@@ -232,7 +212,7 @@ class EtcdBackend(Backend):
     def _rawvalue(self, etcd_value):
         return NameItem.from_dict(json.loads(etcd_value))
 
-    def register(self, name, item):
+    def register(self, name, item, ttl=None):
 
         self._check_name(name)
         self._check_item(item)
@@ -240,7 +220,7 @@ class EtcdBackend(Backend):
         etcd_key = self._etcdkey(name, uuid=item.uuid)
         try:
             etcd_value = self._etcdvalue(item)
-            self._client.set(etcd_key, etcd_value)
+            self._client.set(etcd_key, etcd_value, ttl=ttl)
         except:
             self._logger.ex('register occur error.')
             raise BackendError
@@ -290,16 +270,13 @@ class EtcdBackend(Backend):
             self._logger.ex('lookup key %s occurs error.', etcd_key)
             raise BackendError
 
-    def lookall(self, name=None):
+    def lookall(self):
 
-        if name:
-            self._check_name(name)
-
-        etcd_key = self._etcdkey(name) if name else self._path
+        etcd_key = self._etcdkey(self._path)
         try:
 
             etcd_result = self._client.read(etcd_key, recursive=True)
-            return self._to_name_details(etcd_result)
+            return self._to_namedetails(etcd_result)
         except etcd.EtcdKeyError:
             self._logger.d('key %s not found, just ignore it.', etcd_key)
             return []
@@ -307,19 +284,19 @@ class EtcdBackend(Backend):
             self._logger.ex('lookall key %s occurs error.', etcd_key)
             raise BackendError
 
-    def _to_name_details(self, result):
+    def _to_namedetails(self, result):
 
         results = {}
-        self._collect_name_details(result, results)
+        self._collect_namedetails(result, results)
 
         for child in result.leaves:
-            self._collect_name_details(child, results)
+            self._collect_namedetails(child, results)
 
         return results.items() \
                | collect(lambda it: NameDetail(it[0], items=it[1])) \
                | as_list
 
-    def _collect_name_details(self, result, results):
+    def _collect_namedetails(self, result, results):
 
         if not result.value:
             return

@@ -1,6 +1,8 @@
 """
 
 """
+import sched
+import time
 
 import docker
 import jsonselect
@@ -14,57 +16,39 @@ from dnswall.errors import *
 _logger = loggers.getlogger('d.e.Loop')
 
 
-def loop(backend,
-         docker_url,
-         docker_tls_verify=False,
-         docker_tls_ca=None,
-         docker_tls_key=None,
-         docker_tls_cert=None):
+def loop(backend, docker_url):
     """
 
     :param backend:
     :param docker_url:
-    :param docker_tls_verify:
-    :param docker_tls_ca:
-    :param docker_tls_key:
-    :param docker_tls_cert:
     :return:
     """
 
     # TODO
-    _client = docker.AutoVersionClient(base_url=docker_url)
     _logger.w('start and supervise event loop.')
-    supervisor.supervise(min_seconds=2, max_seconds=64)(_event_loop)(backend, _client)
+    client = docker.AutoVersionClient(base_url=docker_url)
+    supervisor.supervise(min_seconds=2, max_seconds=64)(_event_loop)(backend, client)
 
 
 def _event_loop(backend, client):
-    # consume real time events first.
-    _events = client.events(decode=True, filters={'event': ['destroy', 'die', 'start', 'stop', 'pause', 'unpause']})
+    _heartbeat_containers(backend, client)
 
-    # now loop containers.
-    _handle_containers(backend, _get_containers(client))
-    for _event in _events:
-        # TODO when container destroy, we may lost the opportunity to unregister the container.
-        _container = _get_container(client, _jsonselect(_event, '.id'))
-        _handle_container(backend, _container)
+    _schd = sched.scheduler(time.time, time.sleep)
+    while True:
+        _schd.enter(30, 0, _heartbeat_containers, (backend, client))
+        _schd.run()
 
 
-def _get_containers(client):
-    return client.containers(quiet=True, all=True) \
-           | collect(lambda it: _jsonselect(it, '.Id')) \
-           | collect(lambda it: _get_container(client, it))
+def _heartbeat_containers(backend, client):
+    # list all running containers.
+    containers = client.containers(quiet=True) \
+                 | collect(lambda it: _jsonselect(it, '.Id')) \
+                 | collect(lambda it: client.inspect_container(it))
+    for container in containers:
+        _heartbeat_container(backend, container)
 
 
-def _handle_containers(backend, containers):
-    for _container in containers:
-        _handle_container(backend, _container)
-
-
-def _get_container(client, container_id):
-    return client.inspect_container(container_id)
-
-
-def _handle_container(backend, container):
+def _heartbeat_container(backend, container):
     try:
 
         container_id = _jsonselect(container, '.Id')
@@ -73,7 +57,7 @@ def _handle_container(backend, container):
         # ignore tty container.
         is_tty_container = _jsonselect(container, '.Config .Tty')
         if is_tty_container:
-            _logger.w('ignore tty container[id=%s]', container_id)
+            _logger.w('ignore tty container[id=%s, status=%s]', container_id, container_status)
             return
 
         container_environments = _jsonselect(container, '.Config .Env')
@@ -94,43 +78,24 @@ def _handle_container(backend, container):
         if not interesting_network:
             return
 
-        container_network_path = '.NetworkSettings .Networks .{}'.format(interesting_network)
-        container_network = _jsonselect(container, container_network_path)
+        container_network_selector = '.NetworkSettings .Networks .{}'.format(interesting_network)
+        container_network = _jsonselect(container, container_network_selector)
         if not container_network:
             return
 
-        if container_status not in ['paused', 'exited']:
-            _register_container(backend, container_id, container_domain, container_network)
-        else:
-            _unregister_container(backend, container_id, container_domain, container_network)
+        _logger.d('heartbeat container[id=%s, domain_name=%s] to backend.', container_id, container_domain)
+        name_item = NameItem(uuid=container_id,
+                             host_ipv4=_jsonselect(container_network, '.IPAddress'),
+                             host_ipv6=_jsonselect(container_network, '.GlobalIPv6Address'))
+        backend.register(container_domain, name_item, ttl=60)
 
     except BackendValueError:
-        _logger.w('handle container occurs BackendValueError, just ignore it.')
+        _logger.ex('heartbeat container occurs BackendValueError, just ignore it.')
     except BackendError as e:
         raise e
     except:
-        _logger.ex('handle container occurs error, just ignore it.')
+        _logger.ex('heartbeat container occurs error, just ignore it.')
 
 
 def _jsonselect(obj, selector):
     return jsonselect.select(selector, obj)
-
-
-def _register_container(backend, container_id, container_domain, container_network):
-    _logger.w('register container[id=%s, domain_name=%s] to backend.',
-              container_id, container_domain)
-
-    item = NameItem(uuid=container_id,
-                    host_ipv4=_jsonselect(container_network, '.IPAddress'),
-                    host_ipv6=_jsonselect(container_network, '.GlobalIPv6Address'))
-    backend.register(container_domain, item)
-
-
-def _unregister_container(backend, container_id, container_domain, container_network):
-    _logger.w('unregister container[id=%s, domain_name=%s] from backend.',
-              container_id, container_domain)
-
-    item = NameItem(uuid=container_id,
-                    host_ipv4=_jsonselect(container_network, '.IPAddress'),
-                    host_ipv6=_jsonselect(container_network, '.GlobalIPv6Address'))
-    backend.unregister(container_domain, item)
