@@ -33,14 +33,7 @@ class NameItem(object):
                (other._host_ipv4, other._host_ipv6,)
 
     def __ne__(self, other):
-        if self is other:
-            return False
-
-        if not isinstance(other, NameItem):
-            return True
-
-        return (self._host_ipv4, self._host_ipv6,) != \
-               (other._host_ipv4, other._host_ipv6,)
+        return not self.__eq__(other)
 
     def __hash__(self):
         return hash((self._host_ipv4, self._host_ipv6,))
@@ -161,9 +154,10 @@ class Backend(object):
         pass
 
     @abc.abstractmethod
-    def lookall(self):
+    def lookall(self, name=None):
         """
 
+        :param name:
         :return:
         """
         pass
@@ -174,7 +168,7 @@ class EtcdBackend(Backend):
 
     """
 
-    NODES_KEY = '@items'
+    ITEMS_KEY = '@items'
 
     def __init__(self, *args, **kwargs):
         super(EtcdBackend, self).__init__(*args, **kwargs)
@@ -185,13 +179,17 @@ class EtcdBackend(Backend):
         self._client = etcd.Client(host=host_tuple, allow_reconnect=True)
         self._logger = loggers.getlogger('d.b.EtcdBackend')
 
-    def _etcdkey(self, name, uuid=None):
+    def _etcdkey(self, name, uuid=None, with_items_key=True):
 
         if not uuid:
             uuid = ''
 
+        items_key = EtcdBackend.ITEMS_KEY
+        if not with_items_key:
+            items_key = ''
+
         nameparts = name | split(r'\.') | reverse | as_list
-        keyparts = [self._path] + nameparts + [EtcdBackend.NODES_KEY, uuid]
+        keyparts = [self._path] + nameparts + [items_key, uuid]
         return keyparts | join('/') | replace(r'/+', '/')
 
     def _rawkey(self, etcd_key):
@@ -200,7 +198,7 @@ class EtcdBackend(Backend):
         if self._path and not self._path == '/':
             keyparts = keyparts[:-1]
 
-        keypattern = '[^.]*\.*{}\.*'.format(EtcdBackend.NODES_KEY)
+        keypattern = '[^.]*\.*{}\.*'.format(EtcdBackend.ITEMS_KEY)
         return keyparts[1:-1] \
                | join('.') \
                | replace('\.+', '.') \
@@ -270,9 +268,9 @@ class EtcdBackend(Backend):
             self._logger.ex('lookup key %s occurs error.', etcd_key)
             raise BackendError
 
-    def lookall(self):
+    def lookall(self, name=None):
 
-        etcd_key = self._path
+        etcd_key = self._etcdkey(name, with_items_key=False) if name else self._path
         try:
 
             etcd_result = self._client.read(etcd_key, recursive=True)
@@ -307,7 +305,7 @@ class EtcdBackend(Backend):
         if not self.supports(name):
             return
 
-        if results.get(name):
+        if name in results:
             results[name].append(item)
         else:
             results[name] = [item]
