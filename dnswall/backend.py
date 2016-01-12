@@ -105,7 +105,7 @@ class Backend(object):
 
         backend_url = urlparse.urlparse(backend_options)
         self._url = backend_url
-        self._path = backend_url.path
+        self._path = backend_url.path if backend_url.path else '/dnswall'
         self._patterns = patterns if patterns else []
 
     def supports(self, name):

@@ -74,19 +74,26 @@ def _heartbeat_container(backend, container):
         if not container_domain:
             return
 
-        interesting_network = _jsonselect(container_environments, '.DOMAIN_NETWORK')
-        if not interesting_network:
-            return
+        container_ipv4_addr = _jsonselect(container_environments, '.DOMAIN_IPV4_ADDR')
+        container_ipv6_addr = _jsonselect(container_environments, '.DOMAIN_IPV6_ADDR')
 
-        container_network_selector = '.NetworkSettings .Networks .{}'.format(interesting_network)
-        container_network = _jsonselect(container, container_network_selector)
-        if not container_network:
+        interesting_network = _jsonselect(container_environments, '.DOMAIN_NETWORK')
+        if interesting_network:
+            network_ipv4_selector = \
+                '.NetworkSettings .Networks .{} .IPAddress'.format(interesting_network)
+            network_ipv6_selector = \
+                '.NetworkSettings .Networks .{} .GlobalIPv6Address'.format(interesting_network)
+
+            container_ipv4_addr = _jsonselect(container, network_ipv4_selector)
+            container_ipv6_addr = _jsonselect(container, network_ipv6_selector)
+
+        if not container_ipv4_addr and not container_ipv6_addr:
             return
 
         _logger.d('heartbeat container[id=%s, domain_name=%s] to backend.', container_id, container_domain)
         name_item = NameItem(uuid=container_id,
-                             host_ipv4=_jsonselect(container_network, '.IPAddress'),
-                             host_ipv6=_jsonselect(container_network, '.GlobalIPv6Address'))
+                             host_ipv4=container_ipv4_addr,
+                             host_ipv6=container_ipv6_addr)
         backend.register(container_domain, name_item, ttl=60)
 
     except BackendValueError:
