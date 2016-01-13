@@ -88,6 +88,9 @@ def _heartbeat_container(backend, container):
             container_ipv6_addr = _jsonselect(container, network_ipv6_selector)
 
         if not container_ipv4_addr and not container_ipv6_addr:
+            _logger.w('''ignore container[id=%s, domain_name=%s] because addrs not found.''',
+                      container_id,
+                      container_domain)
             return
 
         _logger.d('heartbeat container[id=%s, domain_name=%s] to backend.', container_id, container_domain)
