@@ -9,15 +9,16 @@ from dnswall import constants
 from dnswall import events
 from dnswall import loggers
 from dnswall.backend import *
+from dnswall.commons import *
 
-__BACKENDS = {"etcd": EtcdBackend}
+__BACKEND_TYPES = {"etcd": EtcdBackend}
 
 _logger = loggers.getlogger('d.Agent')
 
 
 def _get_callargs():
     parser = argparse.ArgumentParser(prog='dnswall-agent',
-                                     description='monitor agent for docker containers.')
+                                     description='dns monitor agent for docker containers.')
 
     parser.add_argument('-backend', dest='backend',
                         default=os.getenv(constants.BACKEND_ENV),
@@ -47,10 +48,10 @@ def main():
         _logger.e('%s env not set, use -backend instead, agent exit.', constants.BACKEND_ENV)
         sys.exit(1)
 
-    backend_scheme = urlparse.urlparse(backend_url).scheme
-    backend_cls = __BACKENDS.get(backend_scheme)
+    backend_type = urlparse.urlparse(backend_url).scheme | lowcase
+    backend_cls = __BACKEND_TYPES.get(backend_type)
     if not backend_cls:
-        _logger.e('backend[type=%s] not found, agent exit.', backend_scheme)
+        _logger.e('backend[type=%s] not found, agent exit.', backend_type)
         sys.exit(1)
 
     backend = backend_cls(backend_url)

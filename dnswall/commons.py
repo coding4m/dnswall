@@ -1,7 +1,9 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import __builtin__ as builtins
 import itertools
+import json
 import re
 import socket
 import sys
@@ -9,18 +11,20 @@ from contextlib import closing
 from datetime import datetime
 from functools import reduce
 
+import jsonselect
+
 __author__ = 'Julien Palard <julien@eeple.fr>'
 __all__ = [
     'Pipe', 'take', 'tail', 'skip',
     'all', 'any', 'avg', 'count', 'max', 'min', 'permutations',
     'netcat', 'netwrite',
     'traverse', 'join', 'split', 'replace',
-    'as_int', 'as_str', 'as_list', 'as_set', 'as_tuple', 'as_dict',
-    'stdout', 'lineout',
+    'as_int', 'as_str', 'as_list', 'as_set', 'as_tuple', 'as_dict', 'to_json',
+    'lowcase', 'upcase', 'stdout', 'lineout',
     'tee', 'add', 'first', 'chain', 'collect', 'select', 'take_while',
     'skip_while', 'aggregate', 'groupby', 'sort', 'reverse',
     'chain_with', 'islice', 'izip', 'passed', 'index', 'strip',
-    'lstrip', 'rstrip', 'run_with', 't', 'to_type',
+    'lstrip', 'rstrip', 'select_path', 'run_with', 't', 'to_type',
 ]
 
 
@@ -177,8 +181,8 @@ def join(iterable, separator):
 
 
 @Pipe
-def split(iterable, pattern, maxsplit=0):
-    return re.split(pattern, iterable, maxsplit=maxsplit)
+def split(astr, pattern, maxsplit=0):
+    return re.split(pattern, astr, maxsplit=maxsplit)
 
 
 @Pipe
@@ -211,18 +215,33 @@ def as_list(iterable):
 
 
 @Pipe
-def as_set(iterable):
-    return builtins.set(iterable)
-
-
-@Pipe
 def as_tuple(iterable):
     return builtins.tuple(iterable)
 
 
 @Pipe
+def as_set(iterable):
+    return builtins.set(iterable)
+
+
+@Pipe
 def as_dict(iterable):
     return dict(iterable)
+
+
+@Pipe
+def to_json(x):
+    return '{}' if not x else json.dumps(x)
+
+
+@Pipe
+def lowcase(x):
+    return x if not x else x.lower()
+
+
+@Pipe
+def upcase(x):
+    return x if not x else x.upper()
 
 
 @Pipe
@@ -326,6 +345,11 @@ def rstrip(iterable, chars=None):
 @Pipe
 def lstrip(iterable, chars=None):
     return iterable.lstrip(chars)
+
+
+@Pipe
+def select_path(x, selector):
+    return jsonselect.select(selector, x)
 
 
 @Pipe

@@ -12,7 +12,7 @@ setup(
     author="coding4m",
     author_email="coding4m@gmail.com",
 
-    install_requires=['python-etcd>=0.4.3', 'twisted>=15.5.0', 'docker-py>=1.6.0', 'jsonselect>=0.2.3'],
+    install_requires=['python-etcd>=0.4.3', 'twisted>=15.5.0', 'docker-py>=1.7.0', 'jsonselect>=0.2.3'],
 
     entry_points={
         'console_scripts': [

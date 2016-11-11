@@ -66,7 +66,11 @@ def main():
     dns_servers = [(it | split(':')) for it in (callargs.servers | split(','))]
     dns_servers = [(it[0], it[1] | as_int) for it in dns_servers] | as_list
     dns_factory = server.DNSServerFactory(
-        clients=[BackendResolver(backend=backend), ProxyResovler(servers=dns_servers)]
+        clients=[
+            BackendResolver(backend=backend),
+            ProxyResovler(resolv='/etc/resolv.conf'),
+            ProxyResovler(servers=dns_servers)
+        ]
     )
 
     dns_addr = callargs.addr | split(':')

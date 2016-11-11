@@ -5,7 +5,6 @@ import sched
 import time
 
 import docker
-import jsonselect
 
 from dnswall import loggers
 from dnswall import supervisor
@@ -24,13 +23,12 @@ def loop(backend, docker_url):
     :return:
     """
 
-    # TODO
     _logger.w('start and supervise event loop.')
     client = docker.AutoVersionClient(base_url=docker_url)
-    supervisor.supervise(min_seconds=2, max_seconds=64)(_event_loop)(backend, client)
+    supervisor.supervise(min_seconds=2, max_seconds=64)(_heartbeat)(backend, client)
 
 
-def _event_loop(backend, client):
+def _heartbeat(backend, client):
     _heartbeat_containers(backend, client)
 
     _schd = sched.scheduler(time.time, time.sleep)
@@ -42,7 +40,7 @@ def _event_loop(backend, client):
 def _heartbeat_containers(backend, client):
     # list all running containers.
     containers = client.containers(quiet=True) \
-                 | collect(lambda it: _jsonselect(it, '.Id')) \
+                 | collect(lambda it: it | select_path('.Id')) \
                  | collect(lambda it: client.inspect_container(it))
     for container in containers:
         _heartbeat_container(backend, container)
@@ -51,16 +49,16 @@ def _heartbeat_containers(backend, client):
 def _heartbeat_container(backend, container):
     try:
 
-        container_id = _jsonselect(container, '.Id')
-        container_status = _jsonselect(container, '.State .Status')
+        container_id = container | select_path('.Id')
+        container_status = container | select_path('.State .Status')
 
         # ignore tty container.
-        is_tty_container = _jsonselect(container, '.Config .Tty')
+        is_tty_container = container | select_path('.Config .Tty')
         if is_tty_container:
             _logger.w('ignore tty container[id=%s, status=%s]', container_id, container_status)
             return
 
-        container_environments = _jsonselect(container, '.Config .Env')
+        container_environments = container | select_path('.Config .Env')
         if not container_environments:
             return
 
@@ -70,33 +68,35 @@ def _heartbeat_container(backend, container):
                                  | as_tuple \
                                  | as_dict
 
-        container_domain = _jsonselect(container_environments, '.DOMAIN_NAME')
+        container_domain = container_environments | select_path('.DOMAIN_NAME')
         if not container_domain:
             return
 
-        container_ipv4_addr = _jsonselect(container_environments, '.DOMAIN_IPV4_ADDR')
-        container_ipv6_addr = _jsonselect(container_environments, '.DOMAIN_IPV6_ADDR')
+        container_ipv4_addr = container_environments | select_path('.DOMAIN_IPV4_ADDR')
+        container_ipv6_addr = container_environments | select_path('.DOMAIN_IPV6_ADDR')
 
-        interesting_network = _jsonselect(container_environments, '.DOMAIN_NETWORK')
-        if interesting_network:
+        container_network = container_environments | select_path('.DOMAIN_NETWORK')
+        if container_network:
             network_ipv4_selector = \
-                '.NetworkSettings .Networks .{} .IPAddress'.format(interesting_network)
+                '.NetworkSettings .Networks .{} .IPAddress'.format(container_network)
             network_ipv6_selector = \
-                '.NetworkSettings .Networks .{} .GlobalIPv6Address'.format(interesting_network)
+                '.NetworkSettings .Networks .{} .GlobalIPv6Address'.format(container_network)
 
-            container_ipv4_addr = _jsonselect(container, network_ipv4_selector)
-            container_ipv6_addr = _jsonselect(container, network_ipv6_selector)
+            container_ipv4_addr = container | select_path(network_ipv4_selector)
+            container_ipv6_addr = container | select_path(network_ipv6_selector)
 
         if not container_ipv4_addr and not container_ipv6_addr:
-            _logger.w('''ignore container[id=%s, domain_name=%s] because addrs not found.''',
-                      container_id,
-                      container_domain)
+            _logger.w(
+                '''ignore container[id=%s, domain_name=%s] because addrs not found.''',
+                container_id,
+                container_domain
+            )
             return
 
         _logger.d('heartbeat container[id=%s, domain_name=%s] to backend.', container_id, container_domain)
-        name_item = NameItem(uuid=container_id,
-                             host_ipv4=container_ipv4_addr,
-                             host_ipv6=container_ipv6_addr)
+        name_item = DomainItem(uuid=container_id,
+                               host_ipv4=container_ipv4_addr,
+                               host_ipv6=container_ipv6_addr)
         backend.register(container_domain, name_item, ttl=60)
 
     except BackendValueError:
@@ -105,7 +105,3 @@ def _heartbeat_container(backend, container):
         raise e
     except:
         _logger.ex('heartbeat container occurs error, just ignore it.')
-
-
-def _jsonselect(obj, selector):
-    return jsonselect.select(selector, obj)
