@@ -53,6 +53,7 @@ class BackendResolver(object):
                         of lists of twisted.names.dns.RRHeader instances.
             """
 
+            import random
             try:
 
                 name_detail = backend.lookup(qn)
@@ -72,6 +73,7 @@ class BackendResolver(object):
                           | collect(lambda record_a: dns.RRHeader(name=qn, payload=record_a)) \
                           | as_list
 
+                random.shuffle(answers)
                 return answers, [], []
 
             else:
@@ -83,6 +85,7 @@ class BackendResolver(object):
                           | collect(lambda record_aaaa: dns.RRHeader(name=qn, payload=record_aaaa)) \
                           | as_list
 
+                random.shuffle(answers)
                 return answers, [], []
 
         return threads.deferToThread(_lookup_backend, self._backend, self._logger, qname, qtype)
