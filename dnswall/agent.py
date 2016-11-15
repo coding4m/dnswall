@@ -48,7 +48,7 @@ def main():
         _logger.e('%s env not set, use -backend instead, agent exit.', constants.BACKEND_ENV)
         sys.exit(1)
 
-    backend_type = urlparse.urlparse(backend_url).scheme | lowcase
+    backend_type = urlparse.urlparse(backend_url | strip).scheme | lowcase
     backend_cls = __BACKEND_TYPES.get(backend_type)
     if not backend_cls:
         _logger.e('backend[type=%s] not found, agent exit.', backend_type)

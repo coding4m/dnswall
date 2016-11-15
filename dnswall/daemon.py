@@ -56,10 +56,10 @@ def main():
         _logger.e('%s env not set, use -backend instead, daemon exit.', constants.BACKEND_ENV)
         sys.exit(1)
 
-    backend_scheme = urlparse.urlparse(backend_url).scheme
-    backend_cls = __BACKENDS.get(backend_scheme)
+    backend_type = urlparse.urlparse(backend_url | strip).scheme
+    backend_cls = __BACKENDS.get(backend_type)
     if not backend_cls:
-        _logger.e('backend[type=%s] not found, daemon exit.', backend_scheme)
+        _logger.e('backend[type=%s] not found, daemon exit.', backend_type)
         sys.exit(1)
 
     backend = backend_cls(backend_url, patterns=patterns)
